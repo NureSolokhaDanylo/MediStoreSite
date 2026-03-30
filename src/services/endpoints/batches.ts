@@ -1,5 +1,5 @@
 import apiClient from '../api/client'
-import type { Batch, BatchCreateDto } from '@/types'
+import type { Batch, BatchCreateDto, BatchSearchResult, PagedSearchResult } from '@/types'
 
 export const batchesService = {
   /**
@@ -21,9 +21,9 @@ export const batchesService = {
   /**
    * Search batches
    */
-  async search(query: string): Promise<Batch[]> {
-    const response = await apiClient.get<Batch[]>('/batches/search', {
-      params: { query },
+  async search(q: string, skip = 0, take = 10): Promise<PagedSearchResult<BatchSearchResult>> {
+    const response = await apiClient.get<PagedSearchResult<BatchSearchResult>>('/batches/search', {
+      params: { q, skip, take },
     })
     return response.data
   },

@@ -1,0 +1,294 @@
+<template>
+  <MainLayout>
+    <div class="page">
+      <h1>Sensor details</h1>
+
+      <p v-if="loading" class="loading">Loading sensor details...</p>
+      <p v-else-if="error" class="error">{{ error }}</p>
+      <p v-if="successMessage" class="success">{{ successMessage }}</p>
+
+      <template v-else>
+        <p v-if="!sensor" class="empty">{{ t('pages.noData') }}</p>
+
+        <div v-else class="details-grid">
+          <section class="card">
+            <div class="card-head">
+              <h2>General</h2>
+              <button v-if="!editing" class="btn btn-secondary" @click="startEdit">Edit</button>
+            </div>
+            <dl v-if="!editing" class="details-list">
+              <div class="row"><dt>ID</dt><dd>{{ sensor.id }}</dd></div>
+              <div class="row"><dt>Serial</dt><dd>{{ sensor.serialNumber || '-' }}</dd></div>
+              <div class="row"><dt>Type</dt><dd>{{ sensorTypeLabel(sensor.sensorType) }}</dd></div>
+              <div class="row"><dt>Status</dt><dd>{{ sensor.isOn ? 'On' : 'Off' }}</dd></div>
+              <div class="row">
+                <dt>Zone</dt>
+                <dd>
+                  <RouterLink
+                    v-if="typeof sensor.zoneId === 'number'"
+                    :to="{ name: 'zone-details', params: { id: sensor.zoneId } }"
+                    class="entity-link"
+                  >
+                    {{ zoneLabel(sensor.zoneId) }}
+                  </RouterLink>
+                  <span v-else>-</span>
+                </dd>
+              </div>
+            </dl>
+            <div v-else class="edit-form">
+              <label class="field"><span>Serial</span><input v-model.trim="editForm.serialNumber" class="input" /></label>
+              <label class="field">
+                <span>Status</span>
+                <select v-model="editForm.isOnText" class="input">
+                  <option value="on">On</option>
+                  <option value="off">Off</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Zone</span>
+                <select v-model="editForm.zoneIdText" class="input">
+                  <option value="">No zone</option>
+                  <option v-for="zone in lookups.zones" :key="zone.id" :value="String(zone.id)">
+                    {{ zone.name }}
+                  </option>
+                </select>
+              </label>
+              <div class="actions">
+                <button class="btn btn-secondary" :disabled="saving" @click="cancelEdit">Cancel</button>
+                <button class="btn" :disabled="saving" @click="saveEdit">Save</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Last reading</h2>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Field</th><th>Value</th></tr></thead>
+                <tbody>
+                  <tr><td>Current value</td><td>{{ currentValue }}</td></tr>
+                  <tr><td>Last update</td><td>{{ formatDate(sensor.lastUpdate) }}</td></tr>
+                  <tr><td>Temperature</td><td>{{ formatTemperature(lastReading?.temperature) }}</td></tr>
+                  <tr><td>Humidity</td><td>{{ formatHumidity(lastReading?.humidity) }}</td></tr>
+                  <tr><td>Reading time</td><td>{{ formatDate(lastReading?.timestamp) }}</td></tr>
+                  <tr v-if="lastReadingError"><td>Reading status</td><td>{{ lastReadingError }}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </template>
+    </div>
+  </MainLayout>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import MainLayout from '@/components/layout/MainLayout.vue'
+import sensorsService from '@/services/endpoints/sensors'
+import type { Reading, Sensor } from '@/types'
+import { useLookupsStore } from '@/stores/lookups'
+
+const { t } = useI18n()
+const route = useRoute()
+const lookups = useLookupsStore()
+const loading = ref(false)
+const saving = ref(false)
+const error = ref('')
+const successMessage = ref('')
+const sensor = ref<Sensor | null>(null)
+const lastReading = ref<Reading | null>(null)
+const lastReadingError = ref('')
+const editing = ref(false)
+const editForm = ref({
+  serialNumber: '',
+  isOnText: 'off',
+  zoneIdText: '',
+})
+
+function parseId(value: unknown): number | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  const id = Number(raw)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+function sensorTypeLabel(value: number): string {
+  if (value === 1) return 'Temperature'
+  if (value === 2) return 'Humidity'
+  return String(value)
+}
+
+function zoneLabel(zoneId: number): string {
+  return lookups.zoneNameById.get(zoneId) ?? `#${zoneId}`
+}
+
+function readText(value: unknown): string {
+  if (value === null || value === undefined) return '-'
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (typeof value === 'string') return value || '-'
+  return '-'
+}
+
+function formatDate(value: unknown): string {
+  if (typeof value !== 'string' || !value) return '-'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+function formatTemperature(value: unknown): string {
+  const numeric = numberOrNull(value)
+  return numeric === null ? '-' : `${numeric.toFixed(1)} °C`
+}
+
+function formatHumidity(value: unknown): string {
+  const numeric = numberOrNull(value)
+  return numeric === null ? '-' : `${numeric.toFixed(1)} %`
+}
+
+function formatCurrentValueByType(type: number, value: unknown, isOn: boolean): string {
+  if (!isOn) return '-'
+  if (type === 1) return formatTemperature(value)
+  if (type === 2) return formatHumidity(value)
+  return readText(value)
+}
+
+const currentValue = computed(() => {
+  if (!sensor.value) return '-'
+  return formatCurrentValueByType(sensor.value.sensorType, sensor.value.lastValue, sensor.value.isOn)
+})
+
+async function load(): Promise<void> {
+  const id = parseId(route.params.id)
+  if (id === null) {
+    error.value = 'Invalid sensor id'
+    sensor.value = null
+    lastReading.value = null
+    lastReadingError.value = ''
+    return
+  }
+  loading.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    const sensorResponse = await sensorsService.getById(id)
+    sensor.value = sensorResponse
+    lastReadingError.value = ''
+    try {
+      lastReading.value = await sensorsService.getLastReading(id)
+    } catch (readingError: any) {
+      lastReading.value = null
+      lastReadingError.value = readingError?.message || 'Last reading unavailable'
+    }
+  } catch (e: any) {
+    error.value = e?.message || t('pages.requestFailed')
+    sensor.value = null
+    lastReading.value = null
+    lastReadingError.value = ''
+  } finally {
+    loading.value = false
+  }
+}
+
+function startEdit(): void {
+  if (!sensor.value) return
+  editForm.value = {
+    serialNumber: sensor.value.serialNumber || '',
+    isOnText: sensor.value.isOn ? 'on' : 'off',
+    zoneIdText: typeof sensor.value.zoneId === 'number' ? String(sensor.value.zoneId) : '',
+  }
+  editing.value = true
+}
+
+function cancelEdit(): void {
+  editing.value = false
+}
+
+function zoneFromForm(): number | null {
+  if (!editForm.value.zoneIdText) return null
+  const parsed = Number(editForm.value.zoneIdText)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+async function saveEdit(): Promise<void> {
+  if (!sensor.value) return
+  error.value = ''
+  successMessage.value = ''
+  if (!editForm.value.serialNumber.trim()) {
+    error.value = 'Serial number is required'
+    return
+  }
+
+  saving.value = true
+  try {
+    await sensorsService.update({
+      id: sensor.value.id,
+      serialNumber: editForm.value.serialNumber.trim(),
+      isOn: editForm.value.isOnText === 'on',
+      zoneId: zoneFromForm(),
+    })
+    editing.value = false
+    successMessage.value = 'Sensor updated'
+    await load()
+  } catch (e: any) {
+    error.value = e?.message || t('pages.requestFailed')
+  } finally {
+    saving.value = false
+  }
+}
+
+watch(() => route.params.id, load)
+onMounted(() => {
+  lookups.ensureLoaded()
+  load()
+})
+</script>
+
+<style scoped>
+.page { max-width: 1400px; }
+.loading,.empty { color: var(--color-on-surface-variant); margin-top: 1rem; }
+.error { color: var(--color-error); margin-top: 1rem; }
+.success { color: #0f8b4c; margin-top: .5rem; }
+.details-grid { margin-top: 1rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.card { background: var(--color-surface-container-lowest); border-radius: .75rem; padding: 1rem; }
+.card h2 { margin: 0 0 .75rem; font-size: 1.05rem; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .75rem; }
+.details-list { margin: 0; }
+.row { display: grid; grid-template-columns: 160px 1fr; gap: .75rem; padding: .45rem 0; }
+dt { color: var(--color-on-surface-variant); }
+dd { margin: 0; }
+.table-wrap { overflow: auto; }
+.table { width: 100%; border-collapse: collapse; }
+.table th,.table td { text-align: left; padding: .65rem; border-bottom: 1px solid rgba(0,0,0,.06); }
+.entity-link { color: var(--color-primary); text-decoration: none; }
+.entity-link:hover { text-decoration: underline; }
+.edit-form { display: flex; flex-direction: column; gap: .6rem; }
+.field { display: flex; flex-direction: column; gap: .3rem; font-size: .9rem; }
+.input {
+  padding: .5rem .65rem;
+  border-radius: .375rem;
+  border: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+}
+.actions { display: flex; justify-content: flex-end; gap: .5rem; }
+.btn {
+  padding: .45rem .75rem;
+  border: none;
+  border-radius: .375rem;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  cursor: pointer;
+}
+.btn-secondary { background: var(--color-surface-container); color: var(--color-on-surface); }
+</style>

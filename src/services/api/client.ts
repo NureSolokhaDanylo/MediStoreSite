@@ -38,8 +38,22 @@ class ApiClient {
       async (error: AxiosError<ApiError>) => {
         const originalRequest = error.config
 
-        // Handle 401 Unauthorized
-        if (error.response?.status === 401 && originalRequest) {
+        const requestUrl = String(originalRequest?.url || '')
+        const isAuthEndpoint =
+          requestUrl.includes('/account/login') ||
+          requestUrl.includes('/account/refresh') ||
+          requestUrl.includes('/account/logout')
+        const hasAccessToken = !!this.getToken()
+        const hasRefreshToken = !!this.getRefreshToken()
+
+        // Handle 401 Unauthorized only for authenticated non-auth requests
+        if (
+          error.response?.status === 401 &&
+          originalRequest &&
+          !isAuthEndpoint &&
+          hasAccessToken &&
+          hasRefreshToken
+        ) {
           // Prevent infinite loop
           if ((originalRequest as any)._retry) {
             this.clearAuth()

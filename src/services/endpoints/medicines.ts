@@ -1,5 +1,5 @@
 import apiClient from '../api/client'
-import type { Medicine, MedicineCreateDto } from '@/types'
+import type { Medicine, MedicineCreateDto, MedicineSearchResult, MedicineUpdateDto, PagedSearchResult } from '@/types'
 
 export const medicinesService = {
   /**
@@ -21,9 +21,9 @@ export const medicinesService = {
   /**
    * Search medicines
    */
-  async search(query: string): Promise<Medicine[]> {
-    const response = await apiClient.get<Medicine[]>('/medicines/search', {
-      params: { query },
+  async search(q: string, skip = 0, take = 10): Promise<PagedSearchResult<MedicineSearchResult>> {
+    const response = await apiClient.get<PagedSearchResult<MedicineSearchResult>>('/medicines/search', {
+      params: { q, skip, take },
     })
     return response.data
   },
@@ -39,8 +39,8 @@ export const medicinesService = {
   /**
    * Update medicine
    */
-  async update(id: number, data: Partial<MedicineCreateDto>): Promise<Medicine> {
-    const response = await apiClient.put<Medicine>(`/medicines/${id}`, data)
+  async update(data: MedicineUpdateDto): Promise<Medicine> {
+    const response = await apiClient.put<Medicine>('/medicines', data)
     return response.data
   },
 

@@ -23,7 +23,7 @@ npx playwright test e2e/login.spec.ts
 ```
 src/
 ├── services/api/      # Axios client with JWT interceptors
-├── services/endpoints/# API service modules (auth, medicines, batches, sensors)
+├── services/endpoints/# API service modules (auth, medicines, batches, sensors, zones, auditLogs)
 ├── stores/            # Pinia stores (auth state management)
 ├── utils/             # Utilities (jwt.ts for token handling)
 ├── views/             # Page components
@@ -55,6 +55,10 @@ src/
 - Auth: `/account/login`, `/account/me`
 - Resources: `/medicines`, `/batches`, `/sensors`, `/zones`
 - OpenAPI spec in `note.api` file
+- Search endpoints use `q`, `limit`, `offset` query params and return `{ items, totalCount, limit, offset }`
+- Audit logs API is under `/audit-logs`:
+  - `/audit-logs/type/{entityType}` (supports optional `from`, `to`)
+  - `/audit-logs/type/{entityType}/last?count=...`
 
 ### TypeScript
 - Interfaces in `src/types/index.ts` match backend DTOs

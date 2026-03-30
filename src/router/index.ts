@@ -18,9 +18,7 @@ const router = createRouter({
     },
     {
       path: '/',
-      name: 'dashboard',
-      component: () => import('../views/DashboardView.vue'),
-      meta: { requiresAuth: true },
+      redirect: '/medicines',
     },
     {
       path: '/medicines',
@@ -53,15 +51,57 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/sensors/:id',
+      name: 'sensor-details',
+      component: () => import('../views/SensorDetailsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/users',
       name: 'users',
       component: () => import('../views/UsersView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/users/:id',
+      name: 'user-details',
+      component: () => import('../views/UserDetailsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/zones',
+      name: 'zones',
+      component: () => import('../views/ZonesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/zones/:id',
+      name: 'zone-details',
+      component: () => import('../views/ZoneDetailsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/logs',
+      name: 'logs',
+      component: () => import('../views/LogsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/alerts',
+      name: 'alerts',
+      component: () => import('../views/AlertsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/alerts/:id',
+      name: 'alert-details',
+      component: () => import('../views/AlertDetailsView.vue'),
       meta: { requiresAuth: true },
     },
     {

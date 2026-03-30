@@ -98,7 +98,7 @@ async function handleLogin() {
     // Wait for next tick to ensure store is updated
     await nextTick()
     
-    // Get redirect path from query or default to dashboard
+    // Get redirect path from query or default to app root
     const redirectPath = (route.query.redirect as string) || '/'
     console.log('Navigating to:', redirectPath)
     

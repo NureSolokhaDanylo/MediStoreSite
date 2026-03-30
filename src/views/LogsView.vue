@@ -2,14 +2,16 @@
   <MainLayout>
     <div class="page">
       <div class="toolbar">
-        <h1>{{ t('pages.medicinesTitle') }}</h1>
+        <h1>{{ t('pages.logsTitle') }}</h1>
         <div class="search-controls">
           <input
             v-model.trim="query"
             class="search-input"
-            placeholder="Search medicines..."
+            :placeholder="t('pages.logsEntityTypePlaceholder') + ' / Search'"
             @keyup.enter="applyFilters"
           />
+          <input v-model.trim="entityType" class="search-input small" :placeholder="t('pages.logsEntityTypePlaceholder')" />
+          <input v-model.trim="action" class="search-input small" placeholder="Action" />
           <input v-model.number="take" type="number" min="1" class="take-input" />
           <button class="btn" :disabled="loading" @click="applyFilters">
             {{ t('pages.search') }}
@@ -17,7 +19,7 @@
         </div>
       </div>
 
-      <p v-if="loading" class="loading">Loading medicines...</p>
+      <p class="hint">{{ t('pages.logsHint') }}</p>
       <p v-if="error" class="error">{{ error }}</p>
 
       <div class="table-wrap">
@@ -25,29 +27,20 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Name</th>
-              <th>Description</th>
-              <th>Temperature range</th>
-              <th>Humidity range</th>
+              <th>{{ t('pages.logsEntityType') }}</th>
+              <th>{{ t('pages.logsAction') }}</th>
+              <th>{{ t('pages.logsTimestamp') }}</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="!loading && medicines.length === 0">
-              <td colspan="5">{{ t('pages.noData') }}</td>
+            <tr v-if="!loading && logs.length === 0">
+              <td colspan="4">{{ t('pages.noData') }}</td>
             </tr>
-            <tr v-for="medicine in medicines" :key="medicine.id">
-              <td>{{ medicine.id }}</td>
-              <td>
-                <RouterLink
-                  :to="{ name: 'medicine-details', params: { id: medicine.id } }"
-                  class="entity-link"
-                >
-                  {{ medicine.name || '-' }}
-                </RouterLink>
-              </td>
-              <td>{{ medicine.description || '-' }}</td>
-              <td>{{ formatRange(medicine.tempMin, medicine.tempMax) }}</td>
-              <td>{{ formatRange(medicine.humidMin, medicine.humidMax) }}</td>
+            <tr v-for="item in logs" :key="String(item.id ?? Math.random())">
+              <td>{{ item.id ?? '-' }}</td>
+              <td>{{ readText(item.entityType) }}</td>
+              <td>{{ readText(item.action) }}</td>
+              <td>{{ formatTime(item.occurredAt) }}</td>
             </tr>
           </tbody>
         </table>
@@ -55,7 +48,7 @@
 
       <div class="pagination">
         <button class="btn" :disabled="loading || skip === 0" @click="goPrev">Prev</button>
-        <span class="loading">Total: {{ totalCount }} | skip {{ skip }} take {{ take }}</span>
+        <span class="hint">Total: {{ totalCount }} | skip {{ skip }} take {{ take }}</span>
         <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">Next</button>
       </div>
     </div>
@@ -64,57 +57,53 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import MainLayout from '@/components/layout/MainLayout.vue'
-import medicinesService from '@/services/endpoints/medicines'
-import type { Medicine, MedicineSearchResult } from '@/types'
 import { useI18n } from 'vue-i18n'
+import MainLayout from '@/components/layout/MainLayout.vue'
+import auditLogsService from '@/services/endpoints/auditLogs'
+import type { AuditLog } from '@/types'
 
 const { t } = useI18n()
 const loading = ref(false)
 const error = ref('')
 const query = ref('')
+const entityType = ref('Zone')
+const action = ref('')
 const skip = ref(0)
 const take = ref(50)
 const totalCount = ref(0)
-
-type MedicineRow = Partial<Medicine> & Pick<Medicine, 'id'>
-const medicines = ref<MedicineRow[]>([])
+const logs = ref<AuditLog[]>([])
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : []
 }
 
-function formatRange(min: number | undefined, max: number | undefined): string {
-  if (typeof min !== 'number' || typeof max !== 'number') return '-'
-  return `${min} – ${max}`
+function readText(value: unknown): string {
+  return typeof value === 'string' && value.trim().length > 0 ? value : '-'
+}
+
+function formatTime(value: unknown): string {
+  if (typeof value !== 'string' || !value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString()
 }
 
 async function loadPage(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    if (!query.value.trim()) {
-      const all = asArray<Medicine>(await medicinesService.getAll())
-      totalCount.value = all.length
-      medicines.value = all.slice(skip.value, skip.value + take.value)
-      return
-    }
-
-    const result = await medicinesService.search(query.value, skip.value, take.value)
-    medicines.value = asArray<MedicineSearchResult>(result?.items).map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      tempMin: undefined,
-      tempMax: undefined,
-      humidMin: undefined,
-      humidMax: undefined,
-    }))
-    totalCount.value = typeof result?.totalCount === 'number' ? result.totalCount : medicines.value.length
+    const response = await auditLogsService.getPaged({
+      q: query.value || undefined,
+      entityType: entityType.value || undefined,
+      action: action.value || undefined,
+      skip: skip.value,
+      take: take.value,
+    })
+    logs.value = asArray<AuditLog>(response?.items)
+    totalCount.value = typeof response?.totalCount === 'number' ? response.totalCount : logs.value.length
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
-    medicines.value = []
+    logs.value = []
     totalCount.value = 0
   } finally {
     loading.value = false
@@ -144,21 +133,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page {
-  max-width: 1400px;
-}
+.page { max-width: 1400px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
 .search-controls { display: flex; gap: .5rem; align-items: center; }
 .search-input { padding: .5rem .75rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); min-width: 240px; }
+.search-input.small { min-width: 160px; }
 .take-input { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); }
 .btn { padding: .5rem .75rem; border: none; border-radius: .375rem; background: var(--color-primary); color: var(--color-on-primary); cursor: pointer; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
-.loading { color: var(--color-on-surface-variant); margin-bottom: .5rem; }
+.hint { color: var(--color-on-surface-variant); margin-bottom: .5rem; }
 .error { color: var(--color-error); margin-bottom: .75rem; }
 .table-wrap { overflow: auto; background: var(--color-surface-container-lowest); border-radius: .75rem; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { padding: .75rem; text-align: left; border-bottom: 1px solid rgba(0,0,0,.06); }
-.entity-link { color: var(--color-primary); text-decoration: none; }
-.entity-link:hover { text-decoration: underline; }
 .pagination { margin-top: .75rem; display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
 </style>

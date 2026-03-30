@@ -1,5 +1,14 @@
 import apiClient from '../api/client'
-import type { Sensor, Reading } from '@/types'
+import type { Sensor, Reading, PagedResult, SensorUpdateDto } from '@/types'
+
+export interface SensorsPagedParams {
+  skip?: number
+  take?: number
+  q?: string
+  sensorType?: number
+  isOn?: boolean
+  zoneId?: number
+}
 
 export const sensorsService = {
   /**
@@ -10,12 +19,30 @@ export const sensorsService = {
     return response.data
   },
 
+  async getPaged(params: SensorsPagedParams = {}): Promise<PagedResult<Sensor>> {
+    const response = await apiClient.get<PagedResult<Sensor>>('/sensors/paged', {
+      params: {
+        skip: params.skip ?? 0,
+        take: params.take ?? 50,
+        q: params.q,
+        sensorType: params.sensorType,
+        isOn: params.isOn,
+        zoneId: params.zoneId,
+      },
+    })
+    return response.data
+  },
+
   /**
    * Get sensor by ID
    */
   async getById(id: number): Promise<Sensor> {
     const response = await apiClient.get<Sensor>(`/sensors/${id}`)
     return response.data
+  },
+
+  async update(data: SensorUpdateDto): Promise<void> {
+    await apiClient.put('/sensors', data)
   },
 
   /**

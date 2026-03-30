@@ -27,9 +27,9 @@ export function setupRouterGuards(router: Router) {
     // Allow access to login page without auth
     if (to.name === 'login') {
       if (isAuthenticated) {
-        // Redirect to dashboard if already logged in
-        console.log('Already authenticated, redirecting to dashboard')
-        next({ name: 'dashboard' })
+        // Redirect to medicines if already logged in
+        console.log('Already authenticated, redirecting to medicines')
+        next({ name: 'medicines' })
       } else {
         next()
       }
@@ -46,7 +46,7 @@ export function setupRouterGuards(router: Router) {
     // Check admin requirement
     if (requiresAdmin && !isAdmin) {
       console.warn(`User attempted to access admin route: ${to.path}`)
-      next({ name: 'dashboard' })
+      next({ name: 'medicines' })
       return
     }
 

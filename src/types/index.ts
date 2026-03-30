@@ -32,6 +32,21 @@ export interface PaginatedResponse<T> {
   totalPages: number
 }
 
+export interface PagedSearchResult<T> {
+  items: T[]
+  totalCount: number
+  limit: number
+  offset: number
+}
+
+export interface PagedResult<T> {
+  items: T[]
+  totalCount: number
+  skip: number
+  take: number
+  hasMore?: boolean
+}
+
 // Medicine (from API schema)
 export interface Medicine {
   id: number
@@ -50,6 +65,16 @@ export interface MedicineCreateDto {
   tempMin: number
   humidMax: number
   humidMin: number
+}
+
+export interface MedicineUpdateDto extends MedicineCreateDto {
+  id: number
+}
+
+export interface MedicineSearchResult {
+  id: number
+  name?: string
+  description?: string
 }
 
 // Batch (from API schema)
@@ -71,20 +96,37 @@ export interface BatchCreateDto {
   zoneId: number
 }
 
+export interface BatchSearchResult {
+  id: number
+  batchNumber?: string
+  medicineId: number
+  zoneId: number
+}
+
 // Sensor & Reading
 export interface Sensor {
   id: number
-  name?: string
-  zoneId: number
-  isActive: boolean
+  serialNumber?: string
+  lastValue?: number | null
+  lastUpdate?: string | null
+  isOn: boolean
+  sensorType: number
+  zoneId?: number | null
+}
+
+export interface SensorUpdateDto {
+  id: number
+  serialNumber?: string
+  isOn?: boolean
+  zoneId?: number | null
 }
 
 export interface Reading {
   id: number
   sensorId: number
-  temperature: number
-  humidity: number
-  timestamp: string
+  temperature?: number | null
+  humidity?: number | null
+  timestamp?: string | null
 }
 
 export interface SensorReading {
@@ -99,14 +141,22 @@ export interface SensorReading {
 
 // Alert
 export interface Alert {
-  id: string
-  type: 'temperature' | 'humidity' | 'expiry' | 'stock' | 'system'
-  severity: 'info' | 'warning' | 'critical'
+  id: number
+  alertType: number
   message: string
-  entityId?: string
-  entityType?: string
-  isRead: boolean
+  isActive?: boolean
+  resolvedAt?: string | null
+  batchId?: number | null
+  zoneId?: number | null
   createdAt: string
+}
+
+export interface AlertDtoPagedResultDto {
+  items: Alert[] | null
+  totalCount: number
+  skip: number
+  take: number
+  hasMore?: boolean
 }
 
 // Zone
@@ -114,4 +164,36 @@ export interface Zone {
   id: number
   name: string
   description?: string
+  tempMax: number
+  tempMin: number
+  humidMax: number
+  humidMin: number
+}
+
+export interface ZoneCreateDto {
+  name: string
+  description?: string
+  tempMax: number
+  tempMin: number
+  humidMax: number
+  humidMin: number
+}
+
+export interface ZoneSearchResult {
+  id: number
+  name?: string
+  description?: string
+}
+
+export interface AuditLog {
+  id: number
+  occurredAt?: string
+  entityType?: string | null
+  entityId?: number
+  action?: string | null
+  userId?: string | null
+  summary?: string | null
+  oldValues?: string | null
+  newValues?: string | null
+  [key: string]: unknown
 }

@@ -57,7 +57,9 @@
 
       <!-- Page Content -->
       <main class="main-content">
-        <router-view />
+        <slot>
+          <router-view />
+        </slot>
       </main>
     </div>
   </div>
@@ -76,10 +78,12 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const navigation = computed(() => [
-  { name: 'dashboard', label: t('navigation.dashboard'), icon: '📊', to: '/' },
   { name: 'medicines', label: t('navigation.medicines'), icon: '💊', to: '/medicines' },
   { name: 'batches', label: t('navigation.batches'), icon: '📦', to: '/batches' },
+  { name: 'alerts', label: t('navigation.alerts'), icon: '🚨', to: '/alerts' },
+  { name: 'zones', label: t('navigation.zones'), icon: '🗺️', to: '/zones' },
   { name: 'sensors', label: t('navigation.sensors'), icon: '🌡️', to: '/sensors' },
+  { name: 'logs', label: t('navigation.logs'), icon: '📜', to: '/logs' },
   { name: 'users', label: t('navigation.users'), icon: '👥', to: '/users' },
   { name: 'settings', label: t('navigation.settings'), icon: '⚙️', to: '/settings' },
 ])
