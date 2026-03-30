@@ -1,23 +1,78 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { setupRouterGuards } from './guards'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      name: 'home',
-      component: HomeView,
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView.vue'),
+      meta: { requiresAuth: false },
     },
     {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      path: '/test-auth',
+      name: 'test-auth',
+      component: () => import('../views/TestView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
+      path: '/',
+      name: 'dashboard',
+      component: () => import('../views/DashboardView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/medicines',
+      name: 'medicines',
+      component: () => import('../views/MedicinesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/medicines/:id',
+      name: 'medicine-details',
+      component: () => import('../views/MedicineDetailsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/batches',
+      name: 'batches',
+      component: () => import('../views/BatchesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/batches/:id',
+      name: 'batch-details',
+      component: () => import('../views/BatchDetailsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/sensors',
+      name: 'sensors',
+      component: () => import('../views/SensorsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/users',
+      name: 'users',
+      component: () => import('../views/UsersView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../views/SettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue'),
     },
   ],
 })
+
+// Setup navigation guards
+setupRouterGuards(router)
 
 export default router
