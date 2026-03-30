@@ -3,7 +3,7 @@
     <div class="page">
       <h1>{{ t('pages.batchDetailsTitle') }}</h1>
 
-      <p v-if="loading" class="loading">Loading batch details...</p>
+      <p v-if="loading" class="loading">{{ t('messages.loadingDetails') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
 
       <template v-else>
@@ -11,22 +11,22 @@
 
         <div v-else class="details-grid">
           <section class="card">
-            <h2>General</h2>
+            <h2>{{ t('fields.general') }}</h2>
             <dl class="details-list">
               <div class="row">
-                <dt>ID</dt>
+                <dt>{{ t('fields.id') }}</dt>
                 <dd>{{ batch.id }}</dd>
               </div>
               <div class="row">
-                <dt>Batch number</dt>
+                <dt>{{ t('fields.batchNumber') }}</dt>
                 <dd>{{ batch.batchNumber }}</dd>
               </div>
               <div class="row">
-                <dt>Quantity</dt>
+                <dt>{{ t('fields.quantity') }}</dt>
                 <dd>{{ batch.quantity }}</dd>
               </div>
               <div class="row">
-                <dt>Medicine</dt>
+                <dt>{{ t('entities.medicine') }}</dt>
                 <dd>
                   <RouterLink
                     :to="{ name: 'medicine-details', params: { id: batch.medicineId } }"
@@ -37,7 +37,7 @@
                 </dd>
               </div>
               <div class="row">
-                <dt>Zone</dt>
+                <dt>{{ t('fields.zone') }}</dt>
                 <dd>
                   <RouterLink :to="{ name: 'zone-details', params: { id: batch.zoneId } }" class="entity-link">
                     {{ zoneLabel(batch.zoneId) }}
@@ -53,17 +53,17 @@
               <table class="table">
                 <thead>
                   <tr>
-                    <th>Type</th>
-                    <th>Value</th>
+                    <th>{{ t('fields.type') }}</th>
+                    <th>{{ t('fields.value') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Date added</td>
+                    <td>{{ t('pages.dateAdded') }}</td>
                     <td>{{ formatDate(batch.dateAdded) }}</td>
                   </tr>
                   <tr>
-                    <td>Expire date</td>
+                    <td>{{ t('pages.expireDate') }}</td>
                     <td>{{ formatDate(batch.expireDate) }}</td>
                   </tr>
                 </tbody>

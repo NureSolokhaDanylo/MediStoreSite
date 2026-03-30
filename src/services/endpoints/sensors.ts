@@ -46,6 +46,21 @@ export const sensorsService = {
   },
 
   /**
+   * Create new sensor
+   */
+  async create(data: { serialNumber: string; sensorType: number; zoneId?: number | null }): Promise<Sensor> {
+    const response = await apiClient.post<Sensor>('/sensors', data)
+    return response.data
+  },
+
+  /**
+   * Delete sensor by ID
+   */
+  async delete(id: number): Promise<void> {
+    await apiClient.delete(`/sensors/${id}`)
+  },
+
+  /**
    * Get readings for a sensor
    */
   async getReadings(sensorId: number): Promise<Reading[]> {
@@ -54,11 +69,21 @@ export const sensorsService = {
   },
 
   /**
-   * Get last reading for a sensor
+   * Get last readings for a sensor (returns array)
    */
-  async getLastReading(sensorId: number): Promise<Reading> {
-    const response = await apiClient.get<Reading>(`/readings/sensor/${sensorId}/last`)
+  async getLastReadings(sensorId: number, count: number = 1): Promise<Reading[]> {
+    const response = await apiClient.get<Reading[]>(`/readings/sensor/${sensorId}/last`, {
+      params: { count },
+    })
     return response.data
+  },
+
+  /**
+   * Generate new API key for a sensor
+   */
+  async generateApiKey(sensorId: number): Promise<string> {
+    const response = await apiClient.post<{ apiKey: string }>(`/sensors/${sensorId}/apikey`)
+    return response.data.apiKey
   },
 
   /**

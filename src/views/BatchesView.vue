@@ -10,27 +10,32 @@
             placeholder="Search batches..."
             @keyup.enter="applyFilters"
           />
-          <input v-model.number="take" type="number" min="1" class="take-input" />
+                    <select v-model.number="take" class="take-select">
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
           <button class="btn" :disabled="loading" @click="applyFilters">
             {{ t('pages.search') }}
           </button>
         </div>
       </div>
 
-      <p v-if="loading" class="loading">Loading batches...</p>
+      <p v-if="loading" class="loading">{{ t('messages.loadingDetails') }}</p>
       <p v-if="error" class="error">{{ error }}</p>
 
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Batch number</th>
-              <th>Quantity</th>
-              <th>Expire date</th>
-              <th>Date added</th>
-              <th>Medicine</th>
-              <th>Zone</th>
+              <th>{{ t('fields.id') }}</th>
+              <th>{{ t('fields.batchNumber') }}</th>
+              <th>{{ t('fields.quantity') }}</th>
+              <th>{{ t('pages.expireDate') }}</th>
+              <th>{{ t('pages.dateAdded') }}</th>
+              <th>{{ t('entities.medicine') }}</th>
+              <th>{{ t('fields.zone') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -73,9 +78,9 @@
       </div>
 
       <div class="pagination">
-        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">Prev</button>
+        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">{{ t('actions.prev') }}</button>
         <span class="loading">Total: {{ totalCount }} | skip {{ skip }} take {{ take }}</span>
-        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">Next</button>
+        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">{{ t('actions.next') }}</button>
       </div>
     </div>
   </MainLayout>
@@ -189,7 +194,7 @@ onMounted(() => {
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
 .search-controls { display: flex; gap: .5rem; align-items: center; }
 .search-input { padding: .5rem .75rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); min-width: 240px; }
-.take-input { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); }
+.take-select { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
 .btn { padding: .5rem .75rem; border: none; border-radius: .375rem; background: var(--color-primary); color: var(--color-on-primary); cursor: pointer; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .loading { color: var(--color-on-surface-variant); margin-bottom: .5rem; }

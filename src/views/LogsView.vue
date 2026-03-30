@@ -12,7 +12,12 @@
           />
           <input v-model.trim="entityType" class="search-input small" :placeholder="t('pages.logsEntityTypePlaceholder')" />
           <input v-model.trim="action" class="search-input small" placeholder="Action" />
-          <input v-model.number="take" type="number" min="1" class="take-input" />
+                    <select v-model.number="take" class="take-select">
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
           <button class="btn" :disabled="loading" @click="applyFilters">
             {{ t('pages.search') }}
           </button>
@@ -26,7 +31,7 @@
         <table class="table">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>{{ t('fields.id') }}</th>
               <th>{{ t('pages.logsEntityType') }}</th>
               <th>{{ t('pages.logsAction') }}</th>
               <th>{{ t('pages.logsTimestamp') }}</th>
@@ -47,9 +52,9 @@
       </div>
 
       <div class="pagination">
-        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">Prev</button>
+        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">{{ t('actions.prev') }}</button>
         <span class="hint">Total: {{ totalCount }} | skip {{ skip }} take {{ take }}</span>
-        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">Next</button>
+        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">{{ t('actions.next') }}</button>
       </div>
     </div>
   </MainLayout>
@@ -138,7 +143,7 @@ onMounted(() => {
 .search-controls { display: flex; gap: .5rem; align-items: center; }
 .search-input { padding: .5rem .75rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); min-width: 240px; }
 .search-input.small { min-width: 160px; }
-.take-input { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); }
+.take-select { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
 .btn { padding: .5rem .75rem; border: none; border-radius: .375rem; background: var(--color-primary); color: var(--color-on-primary); cursor: pointer; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .hint { color: var(--color-on-surface-variant); margin-bottom: .5rem; }

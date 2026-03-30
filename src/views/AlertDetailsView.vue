@@ -1,9 +1,9 @@
 <template>
   <MainLayout>
     <div class="page">
-      <h1>Alert details</h1>
+      <h1>{{ t('pages.alertsTitle') }}</h1>
 
-      <p v-if="loading" class="hint">Loading alert details...</p>
+      <p v-if="loading" class="hint">{{ t('messages.loadingDetails') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
 
       <template v-else>
@@ -11,12 +11,12 @@
 
         <div v-else class="details-grid">
           <section class="card">
-            <h2>General</h2>
+            <h2>{{ t('fields.general') }}</h2>
             <dl class="details-list">
-              <div class="row"><dt>ID</dt><dd>{{ alert.id }}</dd></div>
-              <div class="row"><dt>Type</dt><dd>{{ readType(alert) }}</dd></div>
+              <div class="row"><dt>{{ t('fields.id') }}</dt><dd>{{ alert.id }}</dd></div>
+              <div class="row"><dt>{{ t('fields.type') }}</dt><dd>{{ readType(alert) }}</dd></div>
               <div class="row">
-                <dt>Level</dt>
+                <dt>{{ t('fields.status') }}</dt>
                 <dd>
                   <span class="tone-badge" :class="`tone-${alertTone(alert)}`">
                     {{ toneLabel(alertTone(alert)) }}
@@ -24,7 +24,7 @@
                 </dd>
               </div>
               <div class="row">
-                <dt>Zone</dt>
+                <dt>{{ t('fields.zone') }}</dt>
                 <dd>
                   <RouterLink
                     v-if="readNumericId(alert.zoneId)"
@@ -37,7 +37,7 @@
                 </dd>
               </div>
               <div class="row">
-                <dt>Batch</dt>
+                <dt>{{ t('entities.batch') }}</dt>
                 <dd>
                   <RouterLink
                     v-if="readNumericId(alert.batchId)"
@@ -49,12 +49,12 @@
                   <span v-else>-</span>
                 </dd>
               </div>
-              <div class="row"><dt>Created</dt><dd>{{ formatTime(alert.createdAt) }}</dd></div>
+              <div class="row"><dt>{{ t('actions.created') }}</dt><dd>{{ formatTime(alert.createdAt) }}</dd></div>
             </dl>
           </section>
 
           <section class="card">
-            <h2>All message entries</h2>
+            <h2>{{ t('pages.alertsTitle') }}</h2>
             <div class="message-list">
               <div
                 v-for="(block, index) in parseAlertMessageEntries(alert.message)"

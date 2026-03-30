@@ -5,41 +5,58 @@
         <h1>{{ t('pages.alertsTitle') }}</h1>
         <div class="search-controls">
           <select v-model="activeFilter" class="search-input small">
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">{{ t('filters.all') }}</option>
+            <option value="active">{{ t('filters.active') }}</option>
+            <option value="inactive">{{ t('filters.inactive') }}</option>
           </select>
-          <input v-model.trim="zoneIdInput" class="search-input tiny" placeholder="Zone ID" />
-          <input v-model.trim="batchIdInput" class="search-input tiny" placeholder="Batch ID" />
-          <input v-model.number="take" type="number" min="1" class="take-input" />
+          <input v-model.trim="zoneIdInput" class="search-input tiny" :placeholder="`${t('fields.zone')} ID`" />
+          <input v-model.trim="batchIdInput" class="search-input tiny" :placeholder="`${t('entities.batch')} ID`" />
+                    <select v-model.number="take" class="take-select">
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
           <button class="btn" :disabled="loading" @click="applyFilters">
             {{ t('pages.search') }}
           </button>
         </div>
       </div>
 
-      <div class="report-toolbar">
-        <input v-model="reportFrom" type="date" class="search-input" />
-        <input v-model="reportTo" type="date" class="search-input" />
-        <button class="btn" :disabled="reportLoading" @click="generateReport">Generate report</button>
-      </div>
+      <section class="report-section">
+        <h2>{{ t('pages.generateReport') }}</h2>
+        <p class="report-hint">{{ t('pages.generateReportHint') }}</p>
+        <div class="report-controls">
+          <label class="report-field">
+            <span>{{ t('pages.from') }}</span>
+            <input v-model="reportFrom" type="date" class="report-input" />
+          </label>
+          <label class="report-field">
+            <span>{{ t('pages.to') }}</span>
+            <input v-model="reportTo" type="date" class="report-input" />
+          </label>
+          <button class="btn report-btn" :disabled="reportLoading" @click="generateReport">
+            {{ reportLoading ? t('messages.generating') : t('pages.generatePdf') }}
+          </button>
+        </div>
+        <p v-if="reportError" class="error">{{ reportError }}</p>
+        <p v-if="reportSuccess" class="success">{{ reportSuccess }}</p>
+      </section>
 
-      <p v-if="loading" class="hint">Loading alerts...</p>
+      <p v-if="loading" class="hint">{{ t('messages.loadingDetails') }}</p>
       <p v-if="error" class="error">{{ error }}</p>
-      <p v-if="reportError" class="error">{{ reportError }}</p>
-      <p v-if="reportSuccess" class="success">{{ reportSuccess }}</p>
 
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Type</th>
-              <th>Level</th>
-              <th>Message</th>
-              <th>Zone</th>
-              <th>Batch</th>
-              <th>Created</th>
+              <th>{{ t('fields.id') }}</th>
+              <th>{{ t('fields.type') }}</th>
+              <th>{{ t('fields.status') }}</th>
+              <th>{{ t('pages.logsAction') }}</th>
+              <th>{{ t('fields.zone') }}</th>
+              <th>{{ t('entities.batch') }}</th>
+              <th>{{ t('actions.created') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -110,9 +127,9 @@
       </div>
 
       <div class="pagination">
-        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">Prev</button>
+        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">{{ t('actions.prev') }}</button>
         <span class="hint">Total: {{ totalCount }} | skip {{ skip }} take {{ take }}</span>
-        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">Next</button>
+        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">{{ t('actions.next') }}</button>
       </div>
     </div>
   </MainLayout>
@@ -483,11 +500,50 @@ onMounted(() => {
   align-items: center;
 }
 
-.report-toolbar {
+.report-section {
+  background: var(--color-surface-container-lowest);
+  border-radius: .75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.report-section h2 {
+  margin: 0 0 .25rem;
+  font-size: 1.05rem;
+}
+
+.report-hint {
+  color: var(--color-on-surface-variant);
+  font-size: .875rem;
+  margin: 0 0 .75rem;
+}
+
+.report-controls {
   display: flex;
-  gap: .5rem;
-  align-items: center;
-  margin-bottom: .75rem;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.report-field {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  font-size: .875rem;
+  color: var(--color-on-surface-variant);
+}
+
+.report-input {
+  padding: .5rem .75rem;
+  border-radius: .375rem;
+  border: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+  min-width: 150px;
+}
+
+.report-btn {
+  height: 38px;
 }
 
 .search-input {
@@ -505,11 +561,13 @@ onMounted(() => {
   min-width: 100px;
 }
 
-.take-input {
+.take-select {
   width: 88px;
   padding: .5rem .65rem;
   border-radius: .375rem;
   border: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
 }
 
 .btn {

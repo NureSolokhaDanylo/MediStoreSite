@@ -3,48 +3,56 @@
     <div class="page">
       <div class="toolbar">
         <h1>{{ t('pages.sensorsTitle') }}</h1>
-        <div class="search-controls">
+        <div class="toolbar-right">
+          <button class="btn btn-primary" @click="startCreate">{{ t('actions.createNew') }}</button>
+        </div>
+      </div>
+      <div class="search-controls">
           <input
             v-model.trim="query"
             class="search-input"
-            placeholder="Search sensors..."
+            :placeholder="t('pages.sensorsSearchPlaceholder')"
             @keyup.enter="applyFilters"
           />
           <select v-model.number="sensorType" class="select-input">
-            <option :value="0">All types</option>
-            <option :value="1">Temperature</option>
-            <option :value="2">Humidity</option>
+            <option :value="0">{{ t('filters.allTypes') }}</option>
+            <option :value="1">{{ t('fields.temperature') }}</option>
+            <option :value="2">{{ t('fields.humidity') }}</option>
           </select>
           <select v-model="isOnFilter" class="select-input">
-            <option value="">All states</option>
-            <option value="on">On</option>
-            <option value="off">Off</option>
+            <option value="">{{ t('filters.allStates') }}</option>
+            <option value="on">{{ t('status.on') }}</option>
+            <option value="off">{{ t('status.off') }}</option>
           </select>
           <select v-model="zoneIdFilter" class="select-input">
-            <option value="">All zones</option>
+            <option value="">{{ t('filters.allZones') }}</option>
             <option v-for="zone in lookups.zones" :key="zone.id" :value="zone.id">
               {{ zone.name }}
             </option>
           </select>
-          <input v-model.number="take" type="number" min="1" class="take-input" />
-          <button class="btn" :disabled="loading" @click="applyFilters">Apply</button>
+           <select v-model.number="take" class="take-select">
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+          <button class="btn" :disabled="loading" @click="applyFilters">{{ t('actions.apply') }}</button>
         </div>
-      </div>
 
-      <p v-if="loading" class="hint">Loading sensors...</p>
-      <p v-if="error" class="error">{{ error }}</p>
+        <p v-if="loading" class="hint">{{ t('messages.loadingDetails') }}</p>
+        <p v-if="error" class="error">{{ error }}</p>
 
-      <div class="table-wrap">
+        <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Name / Serial</th>
-              <th>Type</th>
-              <th>Zone</th>
-              <th>Status</th>
-              <th>Current value</th>
-              <th>Last update</th>
+              <th>{{ t('fields.id') }}</th>
+              <th>{{ t('fields.name') }} / {{ t('fields.serialNumber') }}</th>
+              <th>{{ t('fields.type') }}</th>
+              <th>{{ t('fields.zone') }}</th>
+              <th>{{ t('fields.status') }}</th>
+              <th>{{ t('fields.currentValue') }}</th>
+              <th>{{ t('fields.lastUpdate') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -76,7 +84,7 @@
               </td>
               <td>
                 <span :class="sensor.on ? 'status-on' : 'status-off'">
-                  {{ sensor.on ? 'On' : 'Off' }}
+                  {{ sensor.on ? t('actions.on') : t('actions.off') }}
                 </span>
               </td>
               <td>{{ sensor.currentValue }}</td>
@@ -87,9 +95,46 @@
       </div>
 
       <div class="pagination">
-        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">Prev</button>
-        <span class="hint">Total: {{ totalCount }} | skip {{ skip }} take {{ take }}</span>
-        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">Next</button>
+        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">{{ t('actions.prev') }}</button>
+        <span class="hint">{{ t('messages.total', { count: totalCount, skip, take }) }}</span>
+        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">{{ t('actions.next') }}</button>
+      </div>
+
+      <!-- Create modal -->
+      <div v-if="creating" class="modal-overlay">
+        <div class="modal-box">
+          <h3>{{ t('actions.create') }} {{ t('entities.sensor') }}</h3>
+          <div class="modal-form">
+            <label class="field">
+              <span>{{ t('fields.serialNumber') }} *</span>
+              <input v-model.trim="createForm.serialNumber" class="input" />
+            </label>
+            <label class="field">
+              <span>{{ t('fields.sensorType') }} *</span>
+              <select v-model.number="createForm.sensorType" class="input">
+                <option :value="0">{{ t('filters.chooseType') }}</option>
+                <option :value="1">{{ t('fields.temperature') }}</option>
+                <option :value="2">{{ t('fields.humidity') }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>{{ t('fields.zone') }} ({{ t('messages.optional') }})</span>
+              <select v-model="createForm.zoneIdText" class="input">
+                <option value="">{{ t('filters.noZone') }}</option>
+                <option v-for="zone in lookups.zones" :key="zone.id" :value="String(zone.id)">
+                  {{ zone.name }}
+                </option>
+              </select>
+            </label>
+            <p v-if="createError" class="error">{{ createError }}</p>
+            <div class="modal-actions">
+              <button class="btn btn-secondary" :disabled="creatingInProgress" @click="cancelCreate">{{ t('actions.cancel') }}</button>
+              <button class="btn" :disabled="creatingInProgress" @click="submitCreate">
+                {{ creatingInProgress ? t('messages.creating') : t('actions.create') }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </MainLayout>
@@ -127,6 +172,16 @@ const isOnFilter = ref('')
 const zoneIdFilter = ref('')
 const sensors = ref<SensorRow[]>([])
 const lookups = useLookupsStore()
+
+// Create state
+const creating = ref(false)
+const creatingInProgress = ref(false)
+const createError = ref('')
+const createForm = ref({
+  serialNumber: '',
+  sensorType: 0,
+  zoneIdText: '',
+})
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : null
@@ -291,6 +346,44 @@ function goNext(): void {
   loadSensors()
 }
 
+function startCreate(): void {
+  createError.value = ''
+  creating.value = true
+}
+
+function cancelCreate(): void {
+  creating.value = false
+  createForm.value = { serialNumber: '', sensorType: 0, zoneIdText: '' }
+}
+
+async function submitCreate(): Promise<void> {
+  createError.value = ''
+  if (!createForm.value.serialNumber.trim()) {
+    createError.value = t('pages.serialNumberRequired')
+    return
+  }
+  if (createForm.value.sensorType === 0) {
+    createError.value = t('pages.sensorTypeRequired')
+    return
+  }
+  creatingInProgress.value = true
+  try {
+    const zoneId = createForm.value.zoneIdText ? Number(createForm.value.zoneIdText) : null
+    await sensorsService.create({
+      serialNumber: createForm.value.serialNumber,
+      sensorType: createForm.value.sensorType,
+      zoneId: zoneId,
+    })
+    creating.value = false
+    createForm.value = { serialNumber: '', sensorType: 0, zoneIdText: '' }
+    skip.value = 0
+    loadSensors()
+  } catch (e: any) {
+    createError.value = e?.message || t('messages.createSensorFailed')
+    creatingInProgress.value = false
+  }
+}
+
 onMounted(() => {
   lookups.ensureLoaded()
   loadSensors()
@@ -303,7 +396,7 @@ onMounted(() => {
 .search-controls { display: flex; gap: .5rem; align-items: center; }
 .search-input { padding: .5rem .75rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); min-width: 240px; }
 .select-input { padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
-.take-input { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); }
+.take-select { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
 .btn { padding: .5rem .75rem; border: none; border-radius: .375rem; background: var(--color-primary); color: var(--color-on-primary); cursor: pointer; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .hint { color: var(--color-on-surface-variant); margin-bottom: .5rem; }
@@ -316,4 +409,67 @@ onMounted(() => {
 .status-on { color: #0f8b4c; font-weight: 600; }
 .status-off { color: #b42318; font-weight: 600; }
 .pagination { margin-top: .75rem; display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
+
+.toolbar-right { display: flex; gap: .5rem; }
+.btn-primary { background: var(--color-primary); color: var(--color-on-primary); }
+.btn-secondary { background: var(--color-surface-container); color: var(--color-on-surface); }
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--color-surface-container-lowest);
+  border-radius: .75rem;
+  padding: 1.5rem;
+  max-width: 500px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.modal-box h3 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.field span {
+  font-size: .875rem;
+  color: var(--color-on-surface);
+  font-weight: 500;
+}
+
+.input {
+  padding: .5rem .75rem;
+  border-radius: .375rem;
+  border: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+}
+
+.modal-actions {
+  display: flex;
+  gap: .75rem;
+  justify-content: flex-end;
+  margin-top: .5rem;
+}
 </style>

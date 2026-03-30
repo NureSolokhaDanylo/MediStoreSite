@@ -3,7 +3,7 @@
     <div class="page">
       <h1>{{ t('pages.medicineDetailsTitle') }}</h1>
 
-      <p v-if="loading" class="loading">Loading medicine details...</p>
+      <p v-if="loading" class="loading">{{ t('messages.loadingDetails') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
       <p v-if="successMessage" class="success">{{ successMessage }}</p>
 
@@ -13,57 +13,57 @@
         <div v-else class="details-grid">
           <section class="card">
             <div class="card-head">
-              <h2>General</h2>
-              <button v-if="!editing" class="btn btn-secondary" @click="startEdit">Edit</button>
+      <h2>{{ t('fields.general') }}</h2>
+              <button v-if="!editing" class="btn btn-secondary" @click="startEdit">{{ t('actions.edit') }}</button>
             </div>
 
             <dl v-if="!editing" class="details-list">
-              <div class="row"><dt>ID</dt><dd>{{ medicine.id }}</dd></div>
-              <div class="row"><dt>Name</dt><dd>{{ medicine.name || '-' }}</dd></div>
-              <div class="row"><dt>Description</dt><dd>{{ medicine.description || '-' }}</dd></div>
+              <div class="row"><dt>{{ t('fields.id') }}</dt><dd>{{ medicine.id }}</dd></div>
+              <div class="row"><dt>{{ t('fields.name') }}</dt><dd>{{ medicine.name || '-' }}</dd></div>
+              <div class="row"><dt>{{ t('fields.description') }}</dt><dd>{{ medicine.description || '-' }}</dd></div>
             </dl>
 
             <div v-else class="edit-form">
               <label class="field">
-                <span>Name</span>
+                <span>{{ t('fields.name') }}</span>
                 <input v-model.trim="editForm.name" class="input" />
               </label>
               <label class="field">
-                <span>Description</span>
+                <span>{{ t('fields.description') }}</span>
                 <textarea v-model.trim="editForm.description" class="input textarea" />
               </label>
               <div class="grid-two">
-                <label class="field"><span>Temp min</span><input v-model.number="editForm.tempMin" type="number" step="0.1" class="input" /></label>
-                <label class="field"><span>Temp max</span><input v-model.number="editForm.tempMax" type="number" step="0.1" class="input" /></label>
-                <label class="field"><span>Humidity min</span><input v-model.number="editForm.humidMin" type="number" step="0.1" class="input" /></label>
-                <label class="field"><span>Humidity max</span><input v-model.number="editForm.humidMax" type="number" step="0.1" class="input" /></label>
+                <label class="field"><span>{{ t('fields.tempMin') }}</span><input v-model.number="editForm.tempMin" type="number" step="0.1" class="input" /></label>
+                <label class="field"><span>{{ t('fields.tempMax') }}</span><input v-model.number="editForm.tempMax" type="number" step="0.1" class="input" /></label>
+                <label class="field"><span>{{ t('fields.humidMin') }}</span><input v-model.number="editForm.humidMin" type="number" step="0.1" class="input" /></label>
+                <label class="field"><span>{{ t('fields.humidMax') }}</span><input v-model.number="editForm.humidMax" type="number" step="0.1" class="input" /></label>
               </div>
               <div class="actions">
-                <button class="btn btn-secondary" :disabled="saving" @click="cancelEdit">Cancel</button>
-                <button class="btn" :disabled="saving" @click="saveEdit">Save</button>
+                <button class="btn btn-secondary" :disabled="saving" @click="cancelEdit">{{ t('actions.cancel') }}</button>
+                <button class="btn" :disabled="saving" @click="saveEdit">{{ saving ? t('messages.saving') : t('actions.save') }}</button>
               </div>
             </div>
           </section>
 
           <section class="card">
-            <h2>Storage limits</h2>
+            <h2>{{ t('actions.limits') }}</h2>
             <div class="table-wrap">
               <table class="table">
                 <thead>
                   <tr>
-                    <th>Metric</th>
-                    <th>Min</th>
-                    <th>Max</th>
+                    <th>{{ t('fields.metric') }}</th>
+                    <th>{{ t('fields.min') }}</th>
+                    <th>{{ t('fields.max') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Temperature</td>
+                    <td>{{ t('fields.temperature') }}</td>
                     <td>{{ medicine.tempMin }}</td>
                     <td>{{ medicine.tempMax }}</td>
                   </tr>
                   <tr>
-                    <td>Humidity</td>
+                    <td>{{ t('fields.humidity') }}</td>
                     <td>{{ medicine.humidMin }}</td>
                     <td>{{ medicine.humidMax }}</td>
                   </tr>
@@ -73,7 +73,7 @@
           </section>
 
           <section class="card">
-            <h2>Related batches</h2>
+            <h2>{{ t('fields.relatedBatches') }}</h2>
             <div class="table-wrap">
               <table class="table">
                 <thead>
@@ -156,7 +156,7 @@ function parseRouteId(value: unknown): number | null {
 async function loadMedicineDetails(): Promise<void> {
   const id = parseRouteId(route.params.id)
   if (id === null) {
-    error.value = 'Invalid medicine id'
+    error.value = t('pages.invalidMedicineId')
     medicine.value = null
     loading.value = false
     return
@@ -208,7 +208,7 @@ async function saveEdit(): Promise<void> {
   successMessage.value = ''
 
   if (!editForm.value.name.trim()) {
-    error.value = 'Name is required'
+    error.value = t('pages.nameRequired')
     return
   }
   if (
@@ -217,15 +217,15 @@ async function saveEdit(): Promise<void> {
     !isValidNumber(editForm.value.humidMin) ||
     !isValidNumber(editForm.value.humidMax)
   ) {
-    error.value = 'All limits must be valid numbers'
+    error.value = t('messages.invalidLimits')
     return
   }
   if (editForm.value.tempMin > editForm.value.tempMax) {
-    error.value = 'Temperature min must be less than or equal to max'
+    error.value = t('messages.tempMinMaxError')
     return
   }
   if (editForm.value.humidMin > editForm.value.humidMax) {
-    error.value = 'Humidity min must be less than or equal to max'
+    error.value = t('messages.humidMinMaxError')
     return
   }
 
@@ -242,7 +242,7 @@ async function saveEdit(): Promise<void> {
     }
     await medicinesService.update(payload)
     editing.value = false
-    successMessage.value = 'Medicine updated'
+    successMessage.value = t('messages.editMedicineSuccess')
     await loadMedicineDetails()
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')

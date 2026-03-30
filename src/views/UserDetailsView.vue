@@ -3,7 +3,7 @@
     <div class="page">
       <h1>User details</h1>
 
-      <p v-if="loading" class="loading">Loading user details...</p>
+      <p v-if="loading" class="loading">{{ t('messages.loadingDetails') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
 
       <template v-else>

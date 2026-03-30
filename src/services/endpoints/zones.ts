@@ -33,6 +33,12 @@ export const zonesService = {
     const response = await apiClient.post<Zone>('/zones', data)
     return response.data
   },
-}
 
+  /**
+   * Delete zone by ID
+   */
+  async delete(id: number): Promise<void> {
+    await apiClient.delete(`/zones/${id}`)
+  },
+}
 export default zonesService

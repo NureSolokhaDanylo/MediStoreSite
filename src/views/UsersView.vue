@@ -11,13 +11,18 @@
             @keyup.enter="applyFilters"
           />
           <input v-model.trim="role" class="search-input role-input" placeholder="Role" />
-          <input v-model.number="take" type="number" min="1" class="take-input" />
-          <button class="btn" :disabled="loading" @click="applyFilters">Apply</button>
-          <button class="btn btn-add" :disabled="loading" @click="openCreateModal">+ User</button>
+                    <select v-model.number="take" class="take-select">
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+          <button class="btn" :disabled="loading" @click="applyFilters">{{ t('pages.apply') }}</button>
+          <button class="btn btn-add" :disabled="loading" @click="openCreateModal">+ {{ t('entities.user') }}</button>
         </div>
       </div>
 
-      <p v-if="loading" class="hint">Loading users...</p>
+      <p v-if="loading" class="hint">{{ t('messages.loadingDetails') }}</p>
       <p v-if="error" class="error">{{ error }}</p>
       <p v-if="successMessage" class="success">{{ successMessage }}</p>
 
@@ -25,10 +30,10 @@
         <table class="table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Username</th>
-              <th>Roles</th>
-              <th>Actions</th>
+              <th>{{ t('fields.id') }}</th>
+              <th>{{ t('fields.username') }}</th>
+              <th>{{ t('fields.roles') }}</th>
+              <th>{{ t('pages.search') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -44,9 +49,9 @@
               <td>{{ user.username }}</td>
               <td>{{ user.roles }}</td>
               <td class="actions-cell">
-                <button class="btn btn-small" :disabled="isSelf(user.id)" @click="openRolesModal(user)">Roles</button>
-                <button class="btn btn-small" :disabled="isSelf(user.id)" @click="openPasswordModal(user)">Password</button>
-                <button class="btn btn-danger btn-small" :disabled="isSelf(user.id)" @click="removeUser(user)">Delete</button>
+                <button class="btn btn-small" :disabled="isSelf(user.id)" @click="openRolesModal(user)">{{ t('fields.roles') }}</button>
+                <button class="btn btn-small" :disabled="isSelf(user.id)" @click="openPasswordModal(user)">{{ t('fields.password') }}</button>
+                <button class="btn btn-danger btn-small" :disabled="isSelf(user.id)" @click="removeUser(user)">{{ t('actions.delete') }}</button>
               </td>
             </tr>
           </tbody>
@@ -54,49 +59,49 @@
       </div>
 
       <div class="pagination">
-        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">Prev</button>
+        <button class="btn" :disabled="loading || skip === 0" @click="goPrev">{{ t('actions.prev') }}</button>
         <span class="hint">Total: {{ totalCount }} | skip {{ skip }} take {{ take }}</span>
-        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">Next</button>
+        <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">{{ t('actions.next') }}</button>
       </div>
 
       <div v-if="showCreateModal" class="modal-overlay">
         <div class="modal">
-          <h3>Create user</h3>
-          <label class="field">Username <input v-model.trim="createForm.userName" class="search-input" /></label>
-          <label class="field">Password <input v-model="createForm.password" type="password" class="search-input" /></label>
+          <h3>{{ t('pages.createUserTitle') }}</h3>
+          <label class="field">{{ t('fields.username') }} <input v-model.trim="createForm.userName" class="search-input" /></label>
+          <label class="field">{{ t('fields.password') }} <input v-model="createForm.password" type="password" class="search-input" /></label>
           <div class="field">
-            <span>Roles</span>
+            <span>{{ t('fields.roles') }}</span>
             <label><input type="checkbox" v-model="createForm.observer" /> observer</label>
             <label><input type="checkbox" v-model="createForm.operator" /> operator</label>
           </div>
           <div class="modal-actions">
-            <button class="btn" @click="showCreateModal = false">Cancel</button>
-            <button class="btn btn-add" :disabled="processingAction" @click="createUser">Create</button>
+            <button class="btn" @click="showCreateModal = false">{{ t('actions.cancel') }}</button>
+            <button class="btn btn-add" :disabled="processingAction" @click="createUser">{{ t('actions.create') }}</button>
           </div>
         </div>
       </div>
 
       <div v-if="showRolesModal && selectedUser" class="modal-overlay">
         <div class="modal">
-          <h3>Change roles: {{ selectedUser.username }}</h3>
+          <h3>{{ t('pages.saveRoles') }}: {{ selectedUser.username }}</h3>
           <div class="field">
             <label><input type="checkbox" v-model="rolesForm.observer" /> observer</label>
             <label><input type="checkbox" v-model="rolesForm.operator" /> operator</label>
           </div>
           <div class="modal-actions">
-            <button class="btn" @click="showRolesModal = false">Cancel</button>
-            <button class="btn btn-add" :disabled="processingAction" @click="saveRoles">Save roles</button>
+            <button class="btn" @click="showRolesModal = false">{{ t('actions.cancel') }}</button>
+            <button class="btn btn-add" :disabled="processingAction" @click="saveRoles">{{ t('pages.saveRoles') }}</button>
           </div>
         </div>
       </div>
 
       <div v-if="showPasswordModal && selectedUser" class="modal-overlay">
         <div class="modal">
-          <h3>Change password: {{ selectedUser.username }}</h3>
-          <label class="field">New password <input v-model="passwordForm.newPassword" type="password" class="search-input" /></label>
+          <h3>{{ t('pages.savePassword') }}: {{ selectedUser.username }}</h3>
+          <label class="field">{{ t('pages.newPassword') }} <input v-model="passwordForm.newPassword" type="password" class="search-input" /></label>
           <div class="modal-actions">
-            <button class="btn" @click="showPasswordModal = false">Cancel</button>
-            <button class="btn btn-add" :disabled="processingAction" @click="savePassword">Save password</button>
+            <button class="btn" @click="showPasswordModal = false">{{ t('actions.cancel') }}</button>
+            <button class="btn btn-add" :disabled="processingAction" @click="savePassword">{{ t('pages.savePassword') }}</button>
           </div>
         </div>
       </div>
@@ -253,7 +258,7 @@ async function createUser(): Promise<void> {
       password: createForm.value.password,
       roles,
     })
-    successMessage.value = 'User created'
+    successMessage.value = t('messages.userCreated')
     showCreateModal.value = false
     await loadUsers()
   } catch (e: any) {
@@ -276,7 +281,7 @@ async function saveRoles(): Promise<void> {
       targetUserId: selectedUser.value.id,
       roles,
     })
-    successMessage.value = 'Roles updated'
+    successMessage.value = t('messages.rolesUpdated')
     showRolesModal.value = false
     await loadUsers()
   } catch (e: any) {
@@ -297,7 +302,7 @@ async function savePassword(): Promise<void> {
       targetUserId: selectedUser.value.id,
       newPassword: passwordForm.value.newPassword,
     })
-    successMessage.value = 'Password updated'
+    successMessage.value = t('messages.passwordUpdated')
     showPasswordModal.value = false
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
@@ -313,7 +318,7 @@ async function removeUser(user: UserRow): Promise<void> {
   successMessage.value = ''
   try {
     await usersService.deleteById(user.id)
-    successMessage.value = 'User deleted'
+    successMessage.value = t('messages.userDeleted')
     await loadUsers()
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
@@ -375,7 +380,7 @@ onMounted(() => {
 .search-controls { display: flex; gap: .5rem; align-items: center; }
 .search-input { padding: .5rem .75rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); min-width: 240px; }
 .role-input { min-width: 120px; }
-.take-input { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); }
+.take-select { width: 88px; padding: .5rem .65rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
 .btn { padding: .5rem .75rem; border: none; border-radius: .375rem; background: var(--color-primary); color: var(--color-on-primary); cursor: pointer; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .hint { color: var(--color-on-surface-variant); margin-bottom: .5rem; }

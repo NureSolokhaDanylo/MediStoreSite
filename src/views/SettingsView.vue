@@ -3,10 +3,10 @@
     <div class="page">
       <div class="toolbar">
         <h1>{{ t('pages.settingsTitle') }}</h1>
-        <button class="btn" :disabled="loading || saving" @click="loadSettings">Refresh</button>
+        <button class="btn" :disabled="loading || saving" @click="loadSettings">{{ t('pages.refresh') }}</button>
       </div>
 
-      <p v-if="loading" class="hint">Loading settings...</p>
+      <p v-if="loading" class="hint">{{ t('messages.loadingDetails') }}</p>
       <p v-if="error" class="error">{{ error }}</p>
       <p v-if="successMessage" class="success">{{ successMessage }}</p>
 
@@ -39,9 +39,9 @@
         </div>
 
         <div class="actions">
-          <button class="btn-secondary" :disabled="saving" @click="resetForm">Reset</button>
+          <button class="btn-secondary" :disabled="saving" @click="resetForm">{{ t('pages.reset') }}</button>
           <button class="btn" :disabled="saving || !canSave" @click="saveSettings">
-            {{ saving ? 'Saving...' : 'Save settings' }}
+            {{ saving ? t('messages.saving') : t('pages.saveSettings') }}
           </button>
         </div>
       </div>
@@ -159,7 +159,7 @@ onMounted(() => {
 .error { color: var(--color-error); margin-bottom: .75rem; }
 .success { color: #0f8b4c; margin-bottom: .75rem; }
 .card { background: var(--color-surface-container-lowest); border-radius: .75rem; padding: 1rem; }
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.form-grid { display: flex; flex-direction: column; gap: 1rem; max-width: 400px; }
 .field { display: flex; flex-direction: column; gap: .35rem; color: var(--color-on-surface); font-size: .9rem; }
 .input { padding: .5rem .75rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
 .actions { margin-top: 1rem; display: flex; justify-content: flex-end; gap: .5rem; }

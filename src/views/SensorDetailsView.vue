@@ -1,9 +1,9 @@
 <template>
   <MainLayout>
     <div class="page">
-      <h1>Sensor details</h1>
+      <h1>{{ t('pages.sensorsTitle') }}</h1>
 
-      <p v-if="loading" class="loading">Loading sensor details...</p>
+      <p v-if="loading" class="loading">{{ t('messages.loadingDetails') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
       <p v-if="successMessage" class="success">{{ successMessage }}</p>
 
@@ -13,16 +13,16 @@
         <div v-else class="details-grid">
           <section class="card">
             <div class="card-head">
-              <h2>General</h2>
-              <button v-if="!editing" class="btn btn-secondary" @click="startEdit">Edit</button>
+              <h2>{{ t('fields.general') }}</h2>
+              <button v-if="!editing" class="btn btn-secondary" @click="startEdit">{{ t('actions.edit') }}</button>
             </div>
             <dl v-if="!editing" class="details-list">
-              <div class="row"><dt>ID</dt><dd>{{ sensor.id }}</dd></div>
-              <div class="row"><dt>Serial</dt><dd>{{ sensor.serialNumber || '-' }}</dd></div>
-              <div class="row"><dt>Type</dt><dd>{{ sensorTypeLabel(sensor.sensorType) }}</dd></div>
-              <div class="row"><dt>Status</dt><dd>{{ sensor.isOn ? 'On' : 'Off' }}</dd></div>
+              <div class="row"><dt>{{ t('fields.id') }}</dt><dd>{{ sensor.id }}</dd></div>
+              <div class="row"><dt>{{ t('fields.serialNumber') }}</dt><dd>{{ sensor.serialNumber || '-' }}</dd></div>
+              <div class="row"><dt>{{ t('fields.sensorType') }}</dt><dd>{{ sensorTypeLabel(sensor.sensorType) }}</dd></div>
+              <div class="row"><dt>{{ t('fields.status') }}</dt><dd>{{ sensor.isOn ? t('status.on') : t('status.off') }}</dd></div>
               <div class="row">
-                <dt>Zone</dt>
+                <dt>{{ t('fields.zone') }}</dt>
                 <dd>
                   <RouterLink
                     v-if="typeof sensor.zoneId === 'number'"
@@ -36,42 +36,42 @@
               </div>
             </dl>
             <div v-else class="edit-form">
-              <label class="field"><span>Serial</span><input v-model.trim="editForm.serialNumber" class="input" /></label>
+              <label class="field"><span>{{ t('fields.serialNumber') }}</span><input v-model.trim="editForm.serialNumber" class="input" /></label>
               <label class="field">
-                <span>Status</span>
+                <span>{{ t('fields.status') }}</span>
                 <select v-model="editForm.isOnText" class="input">
-                  <option value="on">On</option>
-                  <option value="off">Off</option>
+                  <option value="on">{{ t('status.on') }}</option>
+                  <option value="off">{{ t('status.off') }}</option>
                 </select>
               </label>
               <label class="field">
-                <span>Zone</span>
+                <span>{{ t('fields.zone') }}</span>
                 <select v-model="editForm.zoneIdText" class="input">
-                  <option value="">No zone</option>
+                  <option value="">{{ t('filters.noZone') }}</option>
                   <option v-for="zone in lookups.zones" :key="zone.id" :value="String(zone.id)">
                     {{ zone.name }}
                   </option>
                 </select>
               </label>
               <div class="actions">
-                <button class="btn btn-secondary" :disabled="saving" @click="cancelEdit">Cancel</button>
-                <button class="btn" :disabled="saving" @click="saveEdit">Save</button>
+                <button class="btn btn-secondary" :disabled="saving" @click="cancelEdit">{{ t('actions.cancel') }}</button>
+                <button class="btn" :disabled="saving" @click="saveEdit">{{ saving ? t('messages.saving') : t('actions.save') }}</button>
               </div>
             </div>
           </section>
 
           <section class="card">
-            <h2>Last reading</h2>
+            <h2>{{ t('fields.lastReading') }}</h2>
             <div class="table-wrap">
               <table class="table">
-                <thead><tr><th>Field</th><th>Value</th></tr></thead>
+                <thead><tr><th>{{ t('fields.field') }}</th><th>{{ t('fields.value') }}</th></tr></thead>
                 <tbody>
-                  <tr><td>Current value</td><td>{{ currentValue }}</td></tr>
-                  <tr><td>Last update</td><td>{{ formatDate(sensor.lastUpdate) }}</td></tr>
-                  <tr><td>Temperature</td><td>{{ formatTemperature(lastReading?.temperature) }}</td></tr>
-                  <tr><td>Humidity</td><td>{{ formatHumidity(lastReading?.humidity) }}</td></tr>
-                  <tr><td>Reading time</td><td>{{ formatDate(lastReading?.timestamp) }}</td></tr>
-                  <tr v-if="lastReadingError"><td>Reading status</td><td>{{ lastReadingError }}</td></tr>
+                  <tr><td>{{ t('fields.currentValue') }}</td><td>{{ currentValue }}</td></tr>
+                  <tr><td>{{ t('fields.lastUpdate') }}</td><td>{{ formatDate(sensor.lastUpdate) }}</td></tr>
+                  <tr><td>{{ t('fields.temperature') }}</td><td>{{ formatTemperature(lastReading?.temperature) }}</td></tr>
+                  <tr><td>{{ t('fields.humidity') }}</td><td>{{ formatHumidity(lastReading?.humidity) }}</td></tr>
+                  <tr><td>{{ t('fields.readingTime') }}</td><td>{{ formatDate(lastReading?.timestamp) }}</td></tr>
+                  <tr v-if="lastReadingError"><td>{{ t('fields.readingStatus') }}</td><td>{{ lastReadingError }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -171,7 +171,7 @@ const currentValue = computed(() => {
 async function load(): Promise<void> {
   const id = parseId(route.params.id)
   if (id === null) {
-    error.value = 'Invalid sensor id'
+    error.value = t('pages.invalidSensorId')
     sensor.value = null
     lastReading.value = null
     lastReadingError.value = ''
@@ -185,10 +185,11 @@ async function load(): Promise<void> {
     sensor.value = sensorResponse
     lastReadingError.value = ''
     try {
-      lastReading.value = await sensorsService.getLastReading(id)
+      const readings = await sensorsService.getLastReadings(id)
+      lastReading.value = readings[0] || null
     } catch (readingError: any) {
       lastReading.value = null
-      lastReadingError.value = readingError?.message || 'Last reading unavailable'
+      lastReadingError.value = readingError?.message || t('messages.lastReadingUnavailable')
     }
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
@@ -225,7 +226,7 @@ async function saveEdit(): Promise<void> {
   error.value = ''
   successMessage.value = ''
   if (!editForm.value.serialNumber.trim()) {
-    error.value = 'Serial number is required'
+    error.value = t('pages.serialNumberRequired')
     return
   }
 
@@ -238,7 +239,7 @@ async function saveEdit(): Promise<void> {
       zoneId: zoneFromForm(),
     })
     editing.value = false
-    successMessage.value = 'Sensor updated'
+    successMessage.value = t('messages.success', { entity: t('entities.sensor'), action: t('actions.edit') })
     await load()
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
