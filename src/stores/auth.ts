@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authService } from '@/services/endpoints/auth'
 import type { User, LoginRequest } from '@/types'
+import * as jwt from '@/utils/jwt'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -19,9 +20,40 @@ export const useAuthStore = defineStore('auth', () => {
     }
     return role === 'Admin' || role === 'admin'
   })
+  const isObserver = computed(() => {
+    if (!user.value) return false
+    const role = user.value.role
+    if (Array.isArray(role)) {
+      return role.includes('Observer')
+    }
+    return role === 'Observer'
+  })
   const fullName = computed(() => 
     user.value ? `${user.value.firstName || user.value.username} ${user.value.lastName || ''}`.trim() : ''
   )
+  const roles = computed(() => {
+    if (!user.value) return []
+    const role = user.value.role
+    return Array.isArray(role) ? role : [role]
+  })
+  
+  // Token info getters
+  const tokenInfo = computed(() => {
+    const token = jwt.getStoredToken()
+    if (!token) return null
+    try {
+      return jwt.getTokenInfo(token)
+    } catch {
+      return null
+    }
+  })
+  const tokenExpiresAt = computed(() => tokenInfo.value?.expiresAt || null)
+  const tokenExpiresIn = computed(() => {
+    const token = jwt.getStoredToken()
+    if (!token) return null
+    return jwt.getTimeUntilExpiry(token)
+  })
+  const isTokenValid = computed(() => jwt.hasValidStoredToken())
 
   // Actions
   async function login(credentials: LoginRequest) {
@@ -61,12 +93,31 @@ export const useAuthStore = defineStore('auth', () => {
   function initializeAuth() {
     // Try to restore user from localStorage on app startup
     if (authService.isAuthenticated()) {
-      user.value = authService.getCurrentUser()
+      // Check if token is still valid
+      if (jwt.hasValidStoredToken()) {
+        user.value = authService.getCurrentUser()
+        console.log('Auth initialized from localStorage:', user.value)
+      } else {
+        // Token expired, clear auth
+        console.warn('Stored token expired, clearing auth')
+        authService.logout()
+        user.value = null
+      }
     }
   }
 
   function clearError() {
     error.value = null
+  }
+  
+  // Check if user has specific role
+  function hasRole(role: string): boolean {
+    if (!user.value) return false
+    const userRoles = user.value.role
+    if (Array.isArray(userRoles)) {
+      return userRoles.some(r => r.toLowerCase() === role.toLowerCase())
+    }
+    return userRoles.toLowerCase() === role.toLowerCase()
   }
 
   return {
@@ -78,12 +129,19 @@ export const useAuthStore = defineStore('auth', () => {
     // Getters
     isAuthenticated,
     isAdmin,
+    isObserver,
     fullName,
+    roles,
+    tokenInfo,
+    tokenExpiresAt,
+    tokenExpiresIn,
+    isTokenValid,
     
     // Actions
     login,
     logout,
     initializeAuth,
     clearError,
+    hasRole,
   }
 })

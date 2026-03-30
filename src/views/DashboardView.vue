@@ -1,15 +1,15 @@
 <template>
   <MainLayout>
     <div class="dashboard">
-      <h1>Dashboard</h1>
-      <p>Welcome to MediStore Admin Dashboard</p>
+      <h1>{{ t('dashboard.title') }}</h1>
+      <p>{{ t('dashboard.subtitle') }}</p>
       
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon">💊</div>
           <div class="stat-content">
             <h3 class="stat-value">245</h3>
-            <p class="stat-label">Total Medications</p>
+            <p class="stat-label">{{ t('dashboard.stats.totalMedicines') }}</p>
           </div>
         </div>
 
@@ -17,7 +17,7 @@
           <div class="stat-icon">📦</div>
           <div class="stat-content">
             <h3 class="stat-value">89</h3>
-            <p class="stat-label">Active Batches</p>
+            <p class="stat-label">{{ t('dashboard.stats.activeBatches') }}</p>
           </div>
         </div>
 
@@ -25,7 +25,7 @@
           <div class="stat-icon">🌡️</div>
           <div class="stat-content">
             <h3 class="stat-value">12</h3>
-            <p class="stat-label">Active Sensors</p>
+            <p class="stat-label">{{ t('dashboard.stats.activeSensors') }}</p>
           </div>
         </div>
 
@@ -33,7 +33,7 @@
           <div class="stat-icon">⚠️</div>
           <div class="stat-content">
             <h3 class="stat-value">3</h3>
-            <p class="stat-label">Active Alerts</p>
+            <p class="stat-label">{{ t('dashboard.stats.activeAlerts') }}</p>
           </div>
         </div>
       </div>
@@ -43,6 +43,9 @@
 
 <script setup lang="ts">
 import MainLayout from '@/components/layout/MainLayout.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 </script>
 
 <style scoped>

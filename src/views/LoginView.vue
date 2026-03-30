@@ -3,63 +3,93 @@
     <div class="login-container">
       <div class="login-header">
         <h1 class="login-title">MediStore Admin</h1>
-        <p class="login-subtitle">Sign in to continue</p>
+        <p class="login-subtitle">{{ t('login.subtitle') }}</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label for="login" class="form-label">Login</label>
+          <label for="login" class="form-label">{{ t('login.labels.login') }}</label>
           <input
             id="login"
             v-model="credentials.login"
             type="text"
             class="form-input"
-            placeholder="admin"
+            :class="{ 'input-error': errorMessage }"
+            :placeholder="t('login.placeholders.login')"
             required
             autocomplete="username"
+            @input="clearError"
           />
         </div>
 
         <div class="form-group">
-          <label for="password" class="form-label">Password</label>
+          <label for="password" class="form-label">{{ t('login.labels.password') }}</label>
           <input
             id="password"
             v-model="credentials.password"
             type="password"
             class="form-input"
-            placeholder="••••••••"
+            :class="{ 'input-error': errorMessage }"
+            :placeholder="t('login.placeholders.password')"
             required
             autocomplete="current-password"
+            @input="clearError"
           />
         </div>
 
-        <div v-if="authStore.error" class="error-message">
-          {{ authStore.error }}
-        </div>
+        <Transition name="fade">
+          <div v-if="errorMessage" class="error-message">
+            <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>{{ errorMessage }}</span>
+          </div>
+        </Transition>
 
-        <button type="submit" class="login-btn" :disabled="authStore.loading">
-          {{ authStore.loading ? 'Signing in...' : 'Sign In' }}
+        <button type="submit" class="login-btn" :disabled="isLoading">
+          <span v-if="isLoading" class="spinner"></span>
+          {{ isLoading ? t('login.button.signingIn') : t('login.button.signIn') }}
         </button>
       </form>
+      
+      <p class="login-footer">
+        {{ t('login.footer') }}
+      </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, nextTick } from 'vue'
+import { reactive, ref, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const credentials = reactive({
   login: '',
   password: '',
 })
 
+const errorMessage = ref<string | null>(null)
+const isLoading = ref(false)
+
+function clearError() {
+  errorMessage.value = null
+  authStore.clearError()
+}
+
 async function handleLogin() {
+  // Clear previous error
+  clearError()
+  isLoading.value = true
+  
   try {
     console.log('Attempting login...')
     await authStore.login(credentials)
@@ -85,7 +115,19 @@ async function handleLogin() {
     
   } catch (error: any) {
     console.error('Login failed:', error)
-    // Error will be shown via authStore.error
+    
+    // Set error message for display
+    if (error.response?.status === 401) {
+      errorMessage.value = t('login.errors.invalidCredentials')
+    } else if (error.response?.status === 403) {
+      errorMessage.value = t('login.errors.forbidden')
+    } else if (error.message) {
+      errorMessage.value = error.message
+    } else {
+      errorMessage.value = t('login.errors.default')
+    }
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
@@ -151,7 +193,7 @@ async function handleLogin() {
 .form-input {
   padding: var(--spacing-3) var(--spacing-4);
   background-color: var(--color-surface-container-high);
-  border: none;
+  border: 2px solid transparent;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   color: var(--color-on-surface);
@@ -160,8 +202,13 @@ async function handleLogin() {
 
 .form-input:focus {
   background-color: var(--color-surface-container-lowest);
-  outline: 2px solid var(--color-primary);
-  outline-offset: 0;
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.form-input.input-error {
+  border-color: var(--color-error);
+  background-color: rgba(254, 137, 131, 0.05);
 }
 
 .form-input::placeholder {
@@ -169,15 +216,28 @@ async function handleLogin() {
 }
 
 .error-message {
-  padding: var(--spacing-3);
-  background-color: rgba(254, 137, 131, 0.2);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: rgba(159, 64, 61, 0.1);
   color: var(--color-error);
   border-radius: var(--radius-md);
   font-size: 0.875rem;
-  text-align: center;
+  border: 1px solid rgba(159, 64, 61, 0.2);
+}
+
+.error-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
   padding: var(--spacing-4);
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dim) 100%);
   color: var(--color-on-primary);
@@ -196,7 +256,40 @@ async function handleLogin() {
 }
 
 .login-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: var(--spacing-6);
+  color: var(--color-outline);
+  font-size: 0.75rem;
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

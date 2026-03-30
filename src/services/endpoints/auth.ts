@@ -1,49 +1,30 @@
+import { i18n } from '@/i18n'
 import apiClient from '../api/client'
 import type { LoginRequest, LoginResponse, User } from '@/types'
+import { decodeToken, ClaimTypes, isAdmin as checkIsAdmin } from '@/utils/jwt'
 
 /**
- * Decode JWT token and extract user data from claims
+ * Extract user data from JWT payload
  */
-function decodeJwt(token: string): User {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3 || !parts[1]) {
-      throw new Error('Invalid JWT format')
-    }
-    
-    const base64Url = parts[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    )
-    
-    const payload = JSON.parse(jsonPayload)
-    console.log('Decoded JWT payload:', payload)
-    
-    // Extract user data from JWT claims
-    const user: User = {
-      id: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] || payload.sub || '',
-      username: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || payload.name || '',
-      email: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || payload.email || '',
-      firstName: payload.given_name || '',
-      lastName: payload.family_name || '',
-      role: payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || payload.role || 'User',
-    }
-    
-    console.log('Extracted user from JWT:', user)
-    return user
-  } catch (error) {
-    console.error('Failed to decode JWT:', error)
-    throw new Error('Invalid token format')
+function extractUserFromToken(token: string): User {
+  const payload = decodeToken(token)
+  
+  const roles = payload[ClaimTypes.Role]
+  
+  return {
+    id: (payload[ClaimTypes.NameIdentifier] as string) || payload.sub || '',
+    username: (payload[ClaimTypes.Name] as string) || '',
+    email: (payload[ClaimTypes.Email] as string) || '',
+    firstName: (payload[ClaimTypes.GivenName] as string) || '',
+    lastName: (payload[ClaimTypes.Surname] as string) || '',
+    role: (roles as string | string[]) || 'User',
   }
 }
 
 export const authService = {
   /**
    * Login user with credentials
+   * Only Admin role is allowed to access admin panel
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<any>('/account/login', credentials)
@@ -63,15 +44,22 @@ export const authService = {
       token = response.data.data.token
       refreshToken = response.data.data.refreshToken
     } else {
-      throw new Error('Invalid login response format - no token found')
+      throw new Error(i18n.global.t('login.errors.invalidResponse'))
     }
     
     console.log('Extracted token:', token.substring(0, 20) + '...')
     
-    // Decode JWT to extract user data
-    const user = decodeJwt(token)
+    // Check if user has Admin role BEFORE storing anything
+    if (!checkIsAdmin(token)) {
+      console.warn('Login rejected: user does not have Admin role')
+      throw new Error(i18n.global.t('login.errors.adminOnly'))
+    }
     
-    // Store tokens
+    // Decode JWT to extract user data
+    const user = extractUserFromToken(token)
+    console.log('Extracted user from JWT:', user)
+    
+    // Store tokens (only after admin check passed)
     apiClient.setAuth(token, refreshToken || '')
     
     // Store user data

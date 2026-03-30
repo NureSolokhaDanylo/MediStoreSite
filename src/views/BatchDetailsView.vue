@@ -1,14 +1,17 @@
 <template>
   <MainLayout>
     <div class="page">
-      <h1>Page Title</h1>
-      <p>Content coming soon...</p>
+      <h1>{{ t('pages.batchDetailsTitle') }}</h1>
+      <p>{{ t('pages.comingSoon') }}</p>
     </div>
   </MainLayout>
 </template>
 
 <script setup lang="ts">
 import MainLayout from '@/components/layout/MainLayout.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 </script>
 
 <style scoped>
