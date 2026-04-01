@@ -98,6 +98,48 @@
               </table>
             </div>
           </section>
+
+          <section class="card card-full">
+            <div class="card-head">
+              <h2>{{ t('fields.readingsHistory') }}</h2>
+              <div class="controls">
+                <select v-model.number="readingsCount" class="select-input" @change="loadReadingsHistory">
+                  <option :value="10">10 {{ t('fields.records') }}</option>
+                  <option :value="25">25 {{ t('fields.records') }}</option>
+                  <option :value="50">50 {{ t('fields.records') }}</option>
+                  <option :value="100">100 {{ t('fields.records') }}</option>
+                </select>
+                <button class="btn btn-secondary" :disabled="loadingReadings" @click="loadReadingsHistory">
+                  {{ loadingReadings ? t('messages.loading') : t('pages.refresh') }}
+                </button>
+              </div>
+            </div>
+            <p v-if="loadingReadings" class="hint">{{ t('messages.loading') }}</p>
+            <p v-else-if="readingsError" class="error">{{ readingsError }}</p>
+            <div v-else class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>{{ t('fields.id') }}</th>
+                    <th>{{ t('fields.timestamp') }}</th>
+                    <th>{{ t('fields.temperature') }}</th>
+                    <th>{{ t('fields.humidity') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="readings.length === 0">
+                    <td colspan="4">{{ t('pages.noData') }}</td>
+                  </tr>
+                  <tr v-for="reading in readings" :key="reading.id">
+                    <td>{{ reading.id }}</td>
+                    <td>{{ formatDate(reading.timestamp) }}</td>
+                    <td>{{ formatTemperature(reading.temperature) }}</td>
+                    <td>{{ formatHumidity(reading.humidity) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </template>
 
@@ -145,6 +187,10 @@ const generatedApiKey = ref('')
 const generatingKey = ref(false)
 const showingConfirm = ref(false)
 const copiedMessage = ref('')
+const readings = ref<Reading[]>([])
+const loadingReadings = ref(false)
+const readingsError = ref('')
+const readingsCount = ref(25)
 
 function parseId(value: unknown): number | null {
   const raw = Array.isArray(value) ? value[0] : value
@@ -213,6 +259,7 @@ async function load(): Promise<void> {
     sensor.value = null
     lastReading.value = null
     lastReadingError.value = ''
+    readings.value = []
     return
   }
   loading.value = true
@@ -223,19 +270,40 @@ async function load(): Promise<void> {
     sensor.value = sensorResponse
     lastReadingError.value = ''
     try {
-      const readings = await sensorsService.getLastReadings(id)
-      lastReading.value = readings[0] || null
+      const readingsData = await sensorsService.getLastReadings(id, 1)
+      lastReading.value = readingsData[0] || null
     } catch (readingError: any) {
       lastReading.value = null
       lastReadingError.value = readingError?.message || t('messages.lastReadingUnavailable')
     }
+    await loadReadingsHistory()
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
     sensor.value = null
     lastReading.value = null
     lastReadingError.value = ''
+    readings.value = []
   } finally {
     loading.value = false
+  }
+}
+
+async function loadReadingsHistory(): Promise<void> {
+  const id = parseId(route.params.id)
+  if (id === null) {
+    readings.value = []
+    return
+  }
+  loadingReadings.value = true
+  readingsError.value = ''
+  try {
+    const readingsData = await sensorsService.getLastReadings(id, readingsCount.value)
+    readings.value = readingsData
+  } catch (e: any) {
+    readingsError.value = e?.message || t('pages.requestFailed')
+    readings.value = []
+  } finally {
+    loadingReadings.value = false
   }
 }
 
@@ -341,8 +409,18 @@ onMounted(() => {
 .success { color: #0f8b4c; margin-top: .5rem; }
 .details-grid { margin-top: 1rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 .card { background: var(--color-surface-container-lowest); border-radius: .75rem; padding: 1rem; }
+.card-full { grid-column: 1 / -1; }
 .card h2 { margin: 0 0 .75rem; font-size: 1.05rem; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .75rem; }
+.controls { display: flex; gap: .5rem; align-items: center; }
+.select-input { 
+  padding: .45rem .65rem; 
+  border-radius: .375rem; 
+  border: 1px solid var(--color-outline-variant); 
+  background: var(--color-surface-container-lowest); 
+  color: var(--color-on-surface);
+  font-size: .875rem;
+}
 .details-list { margin: 0; }
 .row { display: grid; grid-template-columns: 160px 1fr; gap: .75rem; padding: .45rem 0; }
 dt { color: var(--color-on-surface-variant); }

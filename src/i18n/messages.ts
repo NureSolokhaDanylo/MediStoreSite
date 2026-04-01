@@ -145,6 +145,9 @@ export const messages = {
       relatedBatches: 'Related batches',
       roles: 'Roles',
       general: 'General',
+      readingsHistory: 'Readings history',
+      records: 'records',
+      timestamp: 'Timestamp',
     },
     actions: {
       edit: 'Edit',
@@ -373,6 +376,9 @@ export const messages = {
       relatedBatches: 'Пов\'язані партії',
       roles: 'Ролі',
       general: 'Загальне',
+      readingsHistory: 'Історія зчитувань',
+      records: 'записів',
+      timestamp: 'Часова мітка',
     },
     actions: {
       edit: 'Редагувати',
