@@ -61,6 +61,28 @@
           </section>
 
           <section class="card">
+            <h2>{{ t('apiKey.title') }}</h2>
+            <p class="hint">{{ t('apiKey.hint') }}</p>
+            <div v-if="generatedApiKey" class="api-key-box">
+              <div class="api-key-warning">⚠️ {{ t('apiKey.warning') }}</div>
+              <div class="api-key-display">
+                <code>{{ generatedApiKey }}</code>
+                <button class="btn btn-secondary btn-icon" @click="copyApiKey" :title="t('apiKey.buttonCopy')">
+                  {{ copiedMessage || t('actions.copy') }}
+                </button>
+              </div>
+            </div>
+            <button 
+              v-else 
+              class="btn btn-secondary" 
+              :disabled="generatingKey"
+              @click="showGenerateConfirm"
+            >
+              {{ generatingKey ? t('messages.generating') : t('apiKey.buttonGenerate') }}
+            </button>
+          </section>
+
+          <section class="card">
             <h2>{{ t('fields.lastReading') }}</h2>
             <div class="table-wrap">
               <table class="table">
@@ -78,6 +100,18 @@
           </section>
         </div>
       </template>
+
+      <!-- Confirm API key generation modal -->
+      <div v-if="showingConfirm" class="modal-overlay" @click.self="cancelGenerateKey">
+        <div class="modal-box">
+          <h3>{{ t('apiKey.confirmTitle') }}</h3>
+          <p>{{ t('apiKey.confirmText') }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="cancelGenerateKey">{{ t('actions.cancel') }}</button>
+            <button class="btn btn-danger" @click="confirmGenerateKey">{{ t('actions.confirm') }}</button>
+          </div>
+        </div>
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -107,6 +141,10 @@ const editForm = ref({
   isOnText: 'off',
   zoneIdText: '',
 })
+const generatedApiKey = ref('')
+const generatingKey = ref(false)
+const showingConfirm = ref(false)
+const copiedMessage = ref('')
 
 function parseId(value: unknown): number | null {
   const raw = Array.isArray(value) ? value[0] : value
@@ -248,6 +286,47 @@ async function saveEdit(): Promise<void> {
   }
 }
 
+function showGenerateConfirm(): void {
+  showingConfirm.value = true
+}
+
+function cancelGenerateKey(): void {
+  showingConfirm.value = false
+}
+
+async function confirmGenerateKey(): Promise<void> {
+  if (!sensor.value) return
+  showingConfirm.value = false
+  generatingKey.value = true
+  error.value = ''
+  successMessage.value = ''
+
+  try {
+    const apiKey = await sensorsService.generateApiKey(sensor.value.id)
+    generatedApiKey.value = apiKey
+  } catch (e: any) {
+    error.value = e?.message || t('pages.requestFailed')
+  } finally {
+    generatingKey.value = false
+  }
+}
+
+async function copyApiKey(): Promise<void> {
+  if (!generatedApiKey.value) return
+  try {
+    await navigator.clipboard.writeText(generatedApiKey.value)
+    copiedMessage.value = t('apiKey.copied')
+    setTimeout(() => {
+      copiedMessage.value = ''
+    }, 2000)
+  } catch (e) {
+    copiedMessage.value = '✗'
+    setTimeout(() => {
+      copiedMessage.value = ''
+    }, 2000)
+  }
+}
+
 watch(() => route.params.id, load)
 onMounted(() => {
   lookups.ensureLoaded()
@@ -291,5 +370,81 @@ dd { margin: 0; }
   color: var(--color-on-primary);
   cursor: pointer;
 }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
 .btn-secondary { background: var(--color-surface-container); color: var(--color-on-surface); }
+.btn-danger { background: var(--color-error); color: white; }
+.btn-icon { display: inline-flex; align-items: center; gap: .25rem; }
+
+.hint { color: var(--color-on-surface-variant); font-size: .875rem; margin-bottom: .75rem; }
+
+.api-key-box { 
+  background: var(--color-surface-container); 
+  border-radius: .5rem; 
+  padding: 1rem; 
+  margin-top: .5rem;
+}
+
+.api-key-warning {
+  background: #fff4e5;
+  color: #663c00;
+  padding: .5rem .75rem;
+  border-radius: .375rem;
+  margin-bottom: .75rem;
+  font-size: .875rem;
+  font-weight: 500;
+}
+
+.api-key-display {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+}
+
+.api-key-display code {
+  flex: 1;
+  background: var(--color-surface-container-lowest);
+  padding: .5rem .75rem;
+  border-radius: .375rem;
+  font-family: 'Courier New', monospace;
+  font-size: .9rem;
+  word-break: break-all;
+  border: 1px solid var(--color-outline-variant);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--color-surface-container-lowest);
+  border-radius: .75rem;
+  padding: 1.5rem;
+  max-width: 500px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.modal-box h3 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+}
+
+.modal-box p {
+  margin: 0 0 1.5rem;
+  color: var(--color-on-surface-variant);
+}
+
+.modal-actions {
+  display: flex;
+  gap: .75rem;
+  justify-content: flex-end;
+}
 </style>
