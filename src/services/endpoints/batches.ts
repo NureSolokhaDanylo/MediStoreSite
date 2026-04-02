@@ -1,5 +1,5 @@
 import apiClient from '../api/client'
-import type { Batch, BatchCreateDto, BatchSearchResult, PagedSearchResult } from '@/types'
+import type { Batch, BatchCreateDto, BatchSearchResult, BatchUpdateDto, PagedSearchResult } from '@/types'
 
 export const batchesService = {
   /**
@@ -39,8 +39,8 @@ export const batchesService = {
   /**
    * Update batch
    */
-  async update(id: number, data: Partial<BatchCreateDto>): Promise<Batch> {
-    const response = await apiClient.put<Batch>(`/batches/${id}`, data)
+  async update(id: number, dto: BatchUpdateDto): Promise<Batch> {
+    const response = await apiClient.put<Batch>(`/batches/${id}`, dto)
     return response.data
   },
 

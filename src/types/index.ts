@@ -99,6 +99,11 @@ export interface BatchCreateDto {
   zoneId: number
 }
 
+export interface BatchUpdateDto extends BatchCreateDto {
+  id: number
+  dateAdded: string
+}
+
 export interface BatchSearchResult {
   id: number
   batchNumber?: string

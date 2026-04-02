@@ -136,7 +136,7 @@ import { onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import batchesService from '@/services/endpoints/batches'
-import type { Batch } from '@/types'
+import type { Batch, BatchUpdateDto } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { useLookupsStore } from '@/stores/lookups'
 import { useAuthStore } from '@/stores/auth'
@@ -161,6 +161,7 @@ const editForm = ref({
   expireDate: '',
   medicineId: 0,
   zoneId: 0,
+  dateAdded: '',
 })
 
 function parseRouteId(value: unknown): number | null {
@@ -220,6 +221,7 @@ function startEdit(): void {
     expireDate: batch.value.expireDate ? batch.value.expireDate.slice(0, 10) : '',
     medicineId: batch.value.medicineId,
     zoneId: batch.value.zoneId,
+    dateAdded: batch.value.dateAdded,
   }
   editing.value = true
 }
@@ -256,13 +258,16 @@ async function saveEdit(): Promise<void> {
 
   saving.value = true
   try {
-    await batchesService.update(batch.value.id, {
+    const payload: BatchUpdateDto = {
+      id: batch.value.id,
       batchNumber: editForm.value.batchNumber.trim(),
       quantity: editForm.value.quantity,
       expireDate: editForm.value.expireDate,
+      dateAdded: editForm.value.dateAdded || batch.value.dateAdded,
       medicineId: editForm.value.medicineId,
       zoneId: editForm.value.zoneId,
-    })
+    }
+    await batchesService.update(batch.value.id, payload)
     editing.value = false
     successMessage.value = t('messages.batchUpdated')
     await loadBatchDetails()
