@@ -97,6 +97,14 @@ export const authService = {
   },
 
   /**
+   * Get current user profile from API (alias for getCurrentUserFromApi)
+   */
+  async getMe(): Promise<User> {
+    const response = await apiClient.get<User>('/account/me')
+    return response.data
+  },
+
+  /**
    * Get current user from localStorage
    */
   getCurrentUser(): User | null {

@@ -100,7 +100,6 @@ export const messages = {
       notFoundTitle: 'Page not found',
       invalidMedicineId: 'Invalid medicine ID',
       invalidSensorId: 'Invalid sensor ID',
-      invalidZoneId: 'Invalid zone ID',
       medicinesSearchPlaceholder: 'Search medicines...',
       nameRequired: 'Name is required',
       sensorTypeRequired: 'Sensor type is required',

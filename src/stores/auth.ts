@@ -54,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
   const canManageUsers = computed(() => isAdmin.value)
   const canViewLogs = computed(() => isAdmin.value)
   const canManageSettings = computed(() => isAdmin.value)
-  const canManageBatches = computed(() => isAdmin.value || isOperator.value)
+  const canManageBatches = computed(() => isOperator.value)
   const canChangeOwnPassword = computed(() => isAuthenticated.value)
   const hasActiveRole = computed(() => isAdmin.value || isOperator.value || isObserver.value)
 
