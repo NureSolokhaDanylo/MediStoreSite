@@ -97,7 +97,7 @@ const pageTitle = computed(() => {
 })
 
 const translatedRole = computed(() => {
-  const role = authStore.user?.role
+  const role = authStore.user?.roles ?? authStore.user?.role
   if (Array.isArray(role)) {
     return role.map(translateRole).join(', ')
   }

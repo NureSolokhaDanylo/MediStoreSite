@@ -10,14 +10,19 @@ function extractUserFromToken(token: string): User {
   const payload = decodeToken(token)
   
   const roles = payload[ClaimTypes.Role]
+  const login = (payload[ClaimTypes.Name] as string) || ''
+  const roleList = Array.isArray(roles) ? (roles as string[]) : (roles ? [roles as string] : [])
   
   return {
     id: (payload[ClaimTypes.NameIdentifier] as string) || payload.sub || '',
-    username: (payload[ClaimTypes.Name] as string) || '',
+    login,
+    username: login,
+    userName: login,
     email: (payload[ClaimTypes.Email] as string) || '',
     firstName: (payload[ClaimTypes.GivenName] as string) || '',
     lastName: (payload[ClaimTypes.Surname] as string) || '',
-    role: (roles as string | string[]) || 'User',
+    roles: roleList,
+    role: roleList,
   }
 }
 

@@ -14,7 +14,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value)
   const normalizedRoles = computed(() => {
     if (!user.value) return [] as string[]
-    const rawRoles = Array.isArray(user.value.role) ? user.value.role : [user.value.role]
+    const sourceRoles = user.value.roles ?? user.value.role ?? []
+    const rawRoles = Array.isArray(sourceRoles) ? sourceRoles : [sourceRoles]
     return rawRoles
       .map((role) => String(role || '').trim().toLowerCase())
       .filter(Boolean)
@@ -23,12 +24,14 @@ export const useAuthStore = defineStore('auth', () => {
   const isOperator = computed(() => normalizedRoles.value.includes('operator'))
   const isObserver = computed(() => normalizedRoles.value.includes('observer'))
   const fullName = computed(() => 
-    user.value ? `${user.value.firstName || user.value.username} ${user.value.lastName || ''}`.trim() : ''
+    user.value
+      ? `${user.value.firstName || user.value.login || user.value.username || ''} ${user.value.lastName || ''}`.trim()
+      : ''
   )
   const roles = computed(() => {
     if (!user.value) return []
-    const role = user.value.role
-    return Array.isArray(role) ? role : [role]
+    const sourceRoles = user.value.roles ?? user.value.role ?? []
+    return Array.isArray(sourceRoles) ? sourceRoles : [sourceRoles]
   })
   
   // Token info getters

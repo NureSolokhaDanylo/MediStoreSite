@@ -1,10 +1,13 @@
 export interface User {
   id: string
-  username: string
-  email: string
-  firstName: string
-  lastName: string
-  role: string | string[] // Can be single role or array of roles
+  login?: string
+  roles?: string[]
+  username?: string
+  userName?: string
+  email?: string
+  firstName?: string
+  lastName?: string
+  role?: string | string[] // Can be single role or array of roles
 }
 
 export interface LoginRequest {
