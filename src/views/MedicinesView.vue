@@ -32,11 +32,11 @@
         <table class="table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Description</th>
-              <th>Temperature range</th>
-              <th>Humidity range</th>
+              <th>{{ t('fields.id') }}</th>
+              <th>{{ t('fields.name') }}</th>
+              <th>{{ t('fields.description') }}</th>
+              <th>{{ t('pages.zonesTempRange') }}</th>
+              <th>{{ t('pages.zonesHumidRange') }}</th>
             </tr>
           </thead>
           <tbody>

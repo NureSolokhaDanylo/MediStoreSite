@@ -7,7 +7,7 @@
           <input
             v-model.trim="query"
             class="search-input"
-            placeholder="Search users..."
+            :placeholder="t('pages.usersSearchPlaceholder')"
             @keyup.enter="applyFilters"
           />
           <input v-model.trim="role" class="search-input role-input" placeholder="Role" />
@@ -33,12 +33,11 @@
               <th>{{ t('fields.id') }}</th>
               <th>{{ t('fields.username') }}</th>
               <th>{{ t('fields.roles') }}</th>
-              <th>{{ t('pages.search') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!loading && users.length === 0">
-              <td colspan="4">{{ t('pages.noData') }}</td>
+              <td colspan="3">{{ t('pages.noData') }}</td>
             </tr>
             <tr v-for="user in users" :key="user.id">
               <td>
@@ -46,13 +45,12 @@
                   {{ user.id }}
                 </RouterLink>
               </td>
-              <td>{{ user.username }}</td>
-              <td>{{ user.roles }}</td>
-              <td class="actions-cell">
-                <button class="btn btn-small" :disabled="isSelf(user.id)" @click="openRolesModal(user)">{{ t('fields.roles') }}</button>
-                <button class="btn btn-small" :disabled="isSelf(user.id)" @click="openPasswordModal(user)">{{ t('fields.password') }}</button>
-                <button class="btn btn-danger btn-small" :disabled="isSelf(user.id)" @click="removeUser(user)">{{ t('actions.delete') }}</button>
+              <td>
+                <RouterLink :to="{ name: 'user-details', params: { id: user.id } }" class="entity-link">
+                  {{ user.username }}
+                </RouterLink>
               </td>
+              <td>{{ user.roles }}</td>
             </tr>
           </tbody>
         </table>
@@ -77,31 +75,6 @@
           <div class="modal-actions">
             <button class="btn" @click="showCreateModal = false">{{ t('actions.cancel') }}</button>
             <button class="btn btn-add" :disabled="processingAction" @click="createUser">{{ t('actions.create') }}</button>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="showRolesModal && selectedUser" class="modal-overlay">
-        <div class="modal">
-          <h3>{{ t('pages.saveRoles') }}: {{ selectedUser.username }}</h3>
-          <div class="field">
-            <label><input type="checkbox" v-model="rolesForm.observer" /> observer</label>
-            <label><input type="checkbox" v-model="rolesForm.operator" /> operator</label>
-          </div>
-          <div class="modal-actions">
-            <button class="btn" @click="showRolesModal = false">{{ t('actions.cancel') }}</button>
-            <button class="btn btn-add" :disabled="processingAction" @click="saveRoles">{{ t('pages.saveRoles') }}</button>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="showPasswordModal && selectedUser" class="modal-overlay">
-        <div class="modal">
-          <h3>{{ t('pages.savePassword') }}: {{ selectedUser.username }}</h3>
-          <label class="field">{{ t('pages.newPassword') }} <input v-model="passwordForm.newPassword" type="password" class="search-input" /></label>
-          <div class="modal-actions">
-            <button class="btn" @click="showPasswordModal = false">{{ t('actions.cancel') }}</button>
-            <button class="btn btn-add" :disabled="processingAction" @click="savePassword">{{ t('pages.savePassword') }}</button>
           </div>
         </div>
       </div>
@@ -133,28 +106,15 @@ const users = ref<UserRow[]>([])
 const skip = ref(0)
 const take = ref(50)
 const totalCount = ref(0)
-const authStore = useAuthStore()
 const processingAction = ref(false)
 
 const showCreateModal = ref(false)
-const showRolesModal = ref(false)
-const showPasswordModal = ref(false)
-const selectedUser = ref<UserRow | null>(null)
 
 const createForm = ref({
   userName: '',
   password: '',
   observer: false,
   operator: false,
-})
-
-const rolesForm = ref({
-  observer: false,
-  operator: false,
-})
-
-const passwordForm = ref({
-  newPassword: '',
 })
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -210,38 +170,9 @@ function normalizeUser(item: unknown): UserRow | null {
   }
 }
 
-function isSelf(userId: string): boolean {
-  return String(authStore.user?.id || '') === String(userId)
-}
-
-function extractRolesArray(value: string): string[] {
-  return value
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
-}
-
 function openCreateModal(): void {
   createForm.value = { userName: '', password: '', observer: false, operator: false }
   showCreateModal.value = true
-}
-
-function openRolesModal(user: UserRow): void {
-  if (isSelf(user.id)) return
-  selectedUser.value = user
-  const roles = extractRolesArray(user.roles.toLowerCase())
-  rolesForm.value = {
-    observer: roles.includes('observer'),
-    operator: roles.includes('operator'),
-  }
-  showRolesModal.value = true
-}
-
-function openPasswordModal(user: UserRow): void {
-  if (isSelf(user.id)) return
-  selectedUser.value = user
-  passwordForm.value = { newPassword: '' }
-  showPasswordModal.value = true
 }
 
 async function createUser(): Promise<void> {
@@ -260,65 +191,6 @@ async function createUser(): Promise<void> {
     })
     successMessage.value = t('messages.userCreated')
     showCreateModal.value = false
-    await loadUsers()
-  } catch (e: any) {
-    error.value = e?.message || t('pages.requestFailed')
-  } finally {
-    processingAction.value = false
-  }
-}
-
-async function saveRoles(): Promise<void> {
-  if (!selectedUser.value || isSelf(selectedUser.value.id)) return
-  processingAction.value = true
-  error.value = ''
-  successMessage.value = ''
-  try {
-    const roles: string[] = []
-    if (rolesForm.value.observer) roles.push('Observer')
-    if (rolesForm.value.operator) roles.push('Operator')
-    await usersService.changeRoles({
-      targetUserId: selectedUser.value.id,
-      roles,
-    })
-    successMessage.value = t('messages.rolesUpdated')
-    showRolesModal.value = false
-    await loadUsers()
-  } catch (e: any) {
-    error.value = e?.message || t('pages.requestFailed')
-  } finally {
-    processingAction.value = false
-  }
-}
-
-async function savePassword(): Promise<void> {
-  if (!selectedUser.value || isSelf(selectedUser.value.id)) return
-  if (!passwordForm.value.newPassword) return
-  processingAction.value = true
-  error.value = ''
-  successMessage.value = ''
-  try {
-    await usersService.changePassword({
-      targetUserId: selectedUser.value.id,
-      newPassword: passwordForm.value.newPassword,
-    })
-    successMessage.value = t('messages.passwordUpdated')
-    showPasswordModal.value = false
-  } catch (e: any) {
-    error.value = e?.message || t('pages.requestFailed')
-  } finally {
-    processingAction.value = false
-  }
-}
-
-async function removeUser(user: UserRow): Promise<void> {
-  if (isSelf(user.id)) return
-  processingAction.value = true
-  error.value = ''
-  successMessage.value = ''
-  try {
-    await usersService.deleteById(user.id)
-    successMessage.value = t('messages.userDeleted')
     await loadUsers()
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
@@ -395,7 +267,6 @@ onMounted(() => {
 .btn-add { background: #0f8b4c; }
 .btn-danger { background: #b42318; }
 .btn-small { padding: .35rem .55rem; font-size: .8rem; }
-.actions-cell { display: flex; gap: .4rem; flex-wrap: wrap; }
 .modal-overlay {
   position: fixed;
   inset: 0;

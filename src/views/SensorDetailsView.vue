@@ -14,7 +14,10 @@
           <section class="card">
             <div class="card-head">
               <h2>{{ t('fields.general') }}</h2>
-              <button v-if="!editing" class="btn btn-secondary" @click="startEdit">{{ t('actions.edit') }}</button>
+              <div class="controls">
+                <button v-if="!editing" class="btn btn-secondary" @click="startEdit">{{ t('actions.edit') }}</button>
+                <button v-if="!editing" class="btn btn-danger" @click="confirmDelete">{{ t('actions.delete') }}</button>
+              </div>
             </div>
             <dl v-if="!editing" class="details-list">
               <div class="row"><dt>{{ t('fields.id') }}</dt><dd>{{ sensor.id }}</dd></div>
@@ -90,8 +93,8 @@
                 <tbody>
                   <tr><td>{{ t('fields.currentValue') }}</td><td>{{ currentValue }}</td></tr>
                   <tr><td>{{ t('fields.lastUpdate') }}</td><td>{{ formatDate(sensor.lastUpdate) }}</td></tr>
-                  <tr><td>{{ t('fields.temperature') }}</td><td>{{ formatTemperature(lastReading?.temperature) }}</td></tr>
-                  <tr><td>{{ t('fields.humidity') }}</td><td>{{ formatHumidity(lastReading?.humidity) }}</td></tr>
+                  <tr v-if="sensor?.sensorType === 1"><td>{{ t('fields.temperature') }}</td><td>{{ formatTemperature(lastReading?.temperature) }}</td></tr>
+                  <tr v-if="sensor?.sensorType === 2"><td>{{ t('fields.humidity') }}</td><td>{{ formatHumidity(lastReading?.humidity) }}</td></tr>
                   <tr><td>{{ t('fields.readingTime') }}</td><td>{{ formatDate(lastReading?.timestamp) }}</td></tr>
                   <tr v-if="lastReadingError"><td>{{ t('fields.readingStatus') }}</td><td>{{ lastReadingError }}</td></tr>
                 </tbody>
@@ -122,19 +125,21 @@
                   <tr>
                     <th>{{ t('fields.id') }}</th>
                     <th>{{ t('fields.timestamp') }}</th>
-                    <th>{{ t('fields.temperature') }}</th>
-                    <th>{{ t('fields.humidity') }}</th>
+                    <th v-if="sensor?.sensorType === 1">{{ t('fields.temperature') }}</th>
+                    <th v-else-if="sensor?.sensorType === 2">{{ t('fields.humidity') }}</th>
+                    <th v-else>{{ t('fields.value') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="readings.length === 0">
-                    <td colspan="4">{{ t('pages.noData') }}</td>
+                    <td colspan="3">{{ t('pages.noData') }}</td>
                   </tr>
                   <tr v-for="reading in readings" :key="reading.id">
                     <td>{{ reading.id }}</td>
                     <td>{{ formatDate(reading.timestamp) }}</td>
-                    <td>{{ formatTemperature(reading.temperature) }}</td>
-                    <td>{{ formatHumidity(reading.humidity) }}</td>
+                    <td v-if="sensor?.sensorType === 1">{{ formatTemperature(reading.temperature) }}</td>
+                    <td v-else-if="sensor?.sensorType === 2">{{ formatHumidity(reading.humidity) }}</td>
+                    <td v-else>{{ readText(reading.temperature ?? reading.humidity ?? '-') }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -154,28 +159,50 @@
           </div>
         </div>
       </div>
+
+      <!-- Delete confirmation modal -->
+      <div v-if="showDeleteModal" class="modal-overlay">
+        <div class="modal-box">
+          <h3>{{ t('actions.delete') }} {{ t('entities.sensor') }}</h3>
+          <p>{{ t('messages.deleteConfirmation', { name: sensor?.serialNumber || `#${sensor?.id}` }) }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="showDeleteModal = false">{{ t('actions.cancel') }}</button>
+            <button class="btn btn-danger" :disabled="deleting" @click="deleteSensor">
+              {{ deleting ? t('messages.deleting') : t('actions.delete') }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </MainLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import sensorsService from '@/services/endpoints/sensors'
-import type { Reading, Sensor } from '@/types'
+import type { Sensor } from '@/types'
 import { useLookupsStore } from '@/stores/lookups'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const lookups = useLookupsStore()
 const loading = ref(false)
 const saving = ref(false)
+const deleting = ref(false)
 const error = ref('')
 const successMessage = ref('')
 const sensor = ref<Sensor | null>(null)
-const lastReading = ref<Reading | null>(null)
+type SensorReadingView = {
+  id: number
+  timestamp: string | null
+  temperature: number | null
+  humidity: number | null
+}
+const lastReading = ref<SensorReadingView | null>(null)
 const lastReadingError = ref('')
 const editing = ref(false)
 const editForm = ref({
@@ -187,10 +214,11 @@ const generatedApiKey = ref('')
 const generatingKey = ref(false)
 const showingConfirm = ref(false)
 const copiedMessage = ref('')
-const readings = ref<Reading[]>([])
+const readings = ref<SensorReadingView[]>([])
 const loadingReadings = ref(false)
 const readingsError = ref('')
 const readingsCount = ref(25)
+const showDeleteModal = ref(false)
 
 function parseId(value: unknown): number | null {
   const raw = Array.isArray(value) ? value[0] : value
@@ -198,9 +226,15 @@ function parseId(value: unknown): number | null {
   return Number.isInteger(id) && id > 0 ? id : null
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
 function sensorTypeLabel(value: number): string {
-  if (value === 1) return 'Temperature'
-  if (value === 2) return 'Humidity'
+  if (value === 1) return t('sensorTypes.temperature')
+  if (value === 2) return t('sensorTypes.humidity')
   return String(value)
 }
 
@@ -228,6 +262,45 @@ function numberOrNull(value: unknown): number | null {
     if (Number.isFinite(parsed)) return parsed
   }
   return null
+}
+
+function normalizeReading(item: unknown, sensorType?: number): SensorReadingView | null {
+  const row = asRecord(item)
+  if (!row) return null
+
+  const id = numberOrNull(row.id)
+  if (id === null) return null
+
+  const timestampRaw = row.timestamp ?? row.timeStamp
+  const timestamp = typeof timestampRaw === 'string' && timestampRaw.trim() ? timestampRaw : null
+  const directTemp = numberOrNull(row.temperature)
+  const directHumidity = numberOrNull(row.humidity)
+  const sharedValue = numberOrNull(row.value)
+
+  let temperature: number | null = directTemp
+  let humidity: number | null = directHumidity
+
+  if (sensorType === 1 && temperature === null) {
+    temperature = sharedValue
+  } else if (sensorType === 2 && humidity === null) {
+    humidity = sharedValue
+  }
+
+  return {
+    id,
+    timestamp,
+    temperature,
+    humidity,
+  }
+}
+
+function sortReadingsNewestFirst(items: SensorReadingView[]): SensorReadingView[] {
+  return [...items].sort((a, b) => {
+    const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0
+    const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0
+    if (timeA !== timeB) return timeB - timeA
+    return b.id - a.id
+  })
 }
 
 function formatTemperature(value: unknown): string {
@@ -269,13 +342,6 @@ async function load(): Promise<void> {
     const sensorResponse = await sensorsService.getById(id)
     sensor.value = sensorResponse
     lastReadingError.value = ''
-    try {
-      const readingsData = await sensorsService.getLastReadings(id, 1)
-      lastReading.value = readingsData[0] || null
-    } catch (readingError: any) {
-      lastReading.value = null
-      lastReadingError.value = readingError?.message || t('messages.lastReadingUnavailable')
-    }
     await loadReadingsHistory()
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
@@ -298,10 +364,21 @@ async function loadReadingsHistory(): Promise<void> {
   readingsError.value = ''
   try {
     const readingsData = await sensorsService.getLastReadings(id, readingsCount.value)
-    readings.value = readingsData
+    const normalized = readingsData
+      .map((item) => normalizeReading(item, sensor.value?.sensorType))
+      .filter((item): item is SensorReadingView => item !== null)
+    readings.value = sortReadingsNewestFirst(normalized)
+    lastReading.value = readings.value[0] || null
+    if (!lastReading.value) {
+      lastReadingError.value = t('messages.lastReadingUnavailable')
+    } else {
+      lastReadingError.value = ''
+    }
   } catch (e: any) {
     readingsError.value = e?.message || t('pages.requestFailed')
     readings.value = []
+    lastReading.value = null
+    lastReadingError.value = t('messages.lastReadingUnavailable')
   } finally {
     loadingReadings.value = false
   }
@@ -392,6 +469,31 @@ async function copyApiKey(): Promise<void> {
     setTimeout(() => {
       copiedMessage.value = ''
     }, 2000)
+  }
+}
+
+function confirmDelete(): void {
+  if (!sensor.value) return
+  showDeleteModal.value = true
+}
+
+async function deleteSensor(): Promise<void> {
+  if (!sensor.value) return
+  deleting.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    await sensorsService.delete(sensor.value.id)
+    successMessage.value = t('messages.deleteSensorSuccess')
+    showDeleteModal.value = false
+    setTimeout(() => {
+      router.push({ name: 'sensors' })
+    }, 1000)
+  } catch (e: any) {
+    error.value = e?.message || t('messages.deleteSensorFailed')
+    showDeleteModal.value = false
+  } finally {
+    deleting.value = false
   }
 }
 

@@ -7,7 +7,7 @@
           <input
             v-model.trim="query"
             class="search-input"
-            placeholder="Search batches..."
+            :placeholder="t('pages.search') + '...'"
             @keyup.enter="applyFilters"
           />
                     <select v-model.number="take" class="take-select">

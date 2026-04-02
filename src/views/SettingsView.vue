@@ -13,27 +13,27 @@
       <div v-if="!loading && form" class="card">
         <div class="form-grid">
           <label class="field">
-            <span>Alert enabled</span>
+            <span>{{ t('pages.settingsAlertEnabled') }}</span>
             <input type="checkbox" v-model="form.alertEnabled" />
           </label>
 
           <label class="field">
-            <span>Temp alert deviation</span>
+            <span>{{ t('pages.settingsTempAlertDeviation') }}</span>
             <input type="number" step="0.1" class="input" v-model.number="form.tempAlertDeviation" />
           </label>
 
           <label class="field">
-            <span>Humidity alert deviation</span>
+            <span>{{ t('pages.settingsHumidityAlertDeviation') }}</span>
             <input type="number" step="0.1" class="input" v-model.number="form.humidityAlertDeviation" />
           </label>
 
           <label class="field">
-            <span>Check deviation interval</span>
+            <span>{{ t('pages.settingsCheckDeviationInterval') }}</span>
             <input type="text" class="input" v-model.trim="form.checkDeviationInterval" />
           </label>
 
           <label class="field">
-            <span>Readings retention days</span>
+            <span>{{ t('pages.settingsReadingsRetentionDays') }}</span>
             <input type="number" class="input" min="1" v-model.number="form.readingsRetentionDays" />
           </label>
         </div>
@@ -109,7 +109,7 @@ async function loadSettings(): Promise<void> {
     const response = await settingsService.get()
     const normalized = normalizeSettings(response)
     if (!normalized) {
-      throw new Error('Unexpected settings response format')
+      throw new Error(t('messages.unexpectedSettingsResponse'))
     }
     form.value = { ...normalized }
     initialSettings.value = { ...normalized }
@@ -136,7 +136,7 @@ async function saveSettings(): Promise<void> {
   try {
     await settingsService.update(form.value)
     initialSettings.value = { ...form.value }
-    successMessage.value = 'Settings saved successfully'
+    successMessage.value = t('messages.settingsSaved')
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
   } finally {

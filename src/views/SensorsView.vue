@@ -84,7 +84,7 @@
               </td>
               <td>
                 <span :class="sensor.on ? 'status-on' : 'status-off'">
-                  {{ sensor.on ? t('actions.on') : t('actions.off') }}
+                  {{ sensor.on ? t('status.on') : t('status.off') }}
                 </span>
               </td>
               <td>{{ sensor.currentValue }}</td>
@@ -228,8 +228,13 @@ function formatDate(value: unknown): string {
 }
 
 function sensorTypeLabel(value: unknown): string {
-  if (value === 1 || value === '1') return 'Temperature'
-  if (value === 2 || value === '2') return 'Humidity'
+  if (value === 1 || value === '1') return t('sensorTypes.temperature')
+  if (value === 2 || value === '2') return t('sensorTypes.humidity')
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ')
+    if (normalized === 'temperature') return t('sensorTypes.temperature')
+    if (normalized === 'humidity') return t('sensorTypes.humidity')
+  }
   return text(value)
 }
 

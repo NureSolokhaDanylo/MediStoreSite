@@ -117,11 +117,11 @@ function readNumericId(value: unknown): number | undefined {
 }
 
 function readType(alertValue: Alert): string {
-  if (alertValue.alertType === 1) return 'Expiration Soon'
-  if (alertValue.alertType === 2) return 'Expired'
-  if (alertValue.alertType === 3) return 'Batch Condition Warning'
-  if (alertValue.alertType === 4) return 'Zone Condition Alert'
-  return `Type ${alertValue.alertType}`
+  const sourceType = (alertValue as unknown as Record<string, unknown>).type
+  if (typeof sourceType === 'string' && sourceType.trim()) {
+    return localizeAlertTypeName(sourceType)
+  }
+  return alertTypeLabelByCode(alertValue.alertType)
 }
 
 function alertTone(alertValue: Alert): 'inactive' | 'warning' | 'alert' {
@@ -131,9 +131,26 @@ function alertTone(alertValue: Alert): 'inactive' | 'warning' | 'alert' {
 }
 
 function toneLabel(tone: 'inactive' | 'warning' | 'alert'): string {
-  if (tone === 'inactive') return 'Inactive'
-  if (tone === 'alert') return 'Alert'
-  return 'Warning'
+  if (tone === 'inactive') return t('alertStatus.inactive')
+  if (tone === 'alert') return t('alertStatus.alert')
+  return t('alertStatus.warning')
+}
+
+function alertTypeLabelByCode(typeCode: number): string {
+  if (typeCode === 1) return t('alertTypes.expirationSoon')
+  if (typeCode === 2) return t('alertTypes.expired')
+  if (typeCode === 3) return t('alertTypes.batchConditionWarning')
+  if (typeCode === 4) return t('alertTypes.zoneConditionAlert')
+  return t('alertTypes.unknownType', { type: typeCode })
+}
+
+function localizeAlertTypeName(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ')
+  if (normalized === 'expiration soon') return t('alertTypes.expirationSoon')
+  if (normalized === 'expired') return t('alertTypes.expired')
+  if (normalized === 'batch condition warning') return t('alertTypes.batchConditionWarning')
+  if (normalized === 'zone condition alert') return t('alertTypes.zoneConditionAlert')
+  return value
 }
 
 function formatTime(value: unknown): string {

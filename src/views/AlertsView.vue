@@ -195,14 +195,10 @@ function readNumericId(value: unknown): number | undefined {
 function readType(alert: Alert): string {
   const value = (alert as unknown as Record<string, unknown>).type
   if (typeof value === 'string' && value.trim().length > 0) {
-    return value
+    return localizeAlertTypeName(value)
   }
   if (typeof alert.alertType === 'number') {
-    if (alert.alertType === 1) return 'Expiration Soon'
-    if (alert.alertType === 2) return 'Expired'
-    if (alert.alertType === 3) return 'Batch Condition Warning'
-    if (alert.alertType === 4) return 'Zone Condition Alert'
-    return `Type ${alert.alertType}`
+    return alertTypeLabelByCode(alert.alertType)
   }
   return '-'
 }
@@ -214,9 +210,26 @@ function alertTone(alert: Alert): 'inactive' | 'warning' | 'alert' {
 }
 
 function toneLabel(tone: 'inactive' | 'warning' | 'alert'): string {
-  if (tone === 'inactive') return 'Inactive'
-  if (tone === 'alert') return 'Alert'
-  return 'Warning'
+  if (tone === 'inactive') return t('alertStatus.inactive')
+  if (tone === 'alert') return t('alertStatus.alert')
+  return t('alertStatus.warning')
+}
+
+function alertTypeLabelByCode(typeCode: number): string {
+  if (typeCode === 1) return t('alertTypes.expirationSoon')
+  if (typeCode === 2) return t('alertTypes.expired')
+  if (typeCode === 3) return t('alertTypes.batchConditionWarning')
+  if (typeCode === 4) return t('alertTypes.zoneConditionAlert')
+  return t('alertTypes.unknownType', { type: typeCode })
+}
+
+function localizeAlertTypeName(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ')
+  if (normalized === 'expiration soon') return t('alertTypes.expirationSoon')
+  if (normalized === 'expired') return t('alertTypes.expired')
+  if (normalized === 'batch condition warning') return t('alertTypes.batchConditionWarning')
+  if (normalized === 'zone condition alert') return t('alertTypes.zoneConditionAlert')
+  return value
 }
 
 function formatAlertMessage(value: unknown): string {
