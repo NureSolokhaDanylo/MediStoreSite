@@ -45,7 +45,7 @@
         <!-- View mode: grid with info cards -->
         <div v-else class="details-grid">
           <!-- Actions panel -->
-          <section class="card actions-card">
+          <section v-if="authStore.canManageZones" class="card actions-card">
             <div class="actions-content">
               <button class="btn" @click="startEdit">{{ t('actions.edit') }}</button>
               <button class="btn btn-danger" @click="startDelete" :disabled="deleting">{{ t('actions.delete') }}</button>
@@ -97,10 +97,12 @@ import { useI18n } from 'vue-i18n'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import zonesService from '@/services/endpoints/zones'
 import type { Zone } from '@/types'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
@@ -147,6 +149,7 @@ async function load(): Promise<void> {
 }
 
 function startEdit(): void {
+  if (!authStore.canManageZones) return
   if (!zone.value) return
   editForm.value = {
     name: zone.value.name || '',
@@ -164,10 +167,12 @@ function cancelEdit(): void {
 }
 
 function startDelete(): void {
+  if (!authStore.canManageZones) return
   confirmingDelete.value = true
 }
 
 async function confirmDelete(): Promise<void> {
+  if (!authStore.canManageZones) return
   if (!zone.value) return
   deleting.value = true
   try {
@@ -192,6 +197,7 @@ function isValidNumber(value: unknown): value is number {
 }
 
 async function saveEdit(): Promise<void> {
+  if (!authStore.canManageZones) return
   if (!zone.value) return
   error.value = ''
   successMessage.value = ''

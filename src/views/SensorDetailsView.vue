@@ -15,8 +15,8 @@
             <div class="card-head">
               <h2>{{ t('fields.general') }}</h2>
               <div class="controls">
-                <button v-if="!editing" class="btn btn-secondary" @click="startEdit">{{ t('actions.edit') }}</button>
-                <button v-if="!editing" class="btn btn-danger" @click="confirmDelete">{{ t('actions.delete') }}</button>
+                <button v-if="!editing && authStore.canManageSensors" class="btn btn-secondary" @click="startEdit">{{ t('actions.edit') }}</button>
+                <button v-if="!editing && authStore.canManageSensors" class="btn btn-danger" @click="confirmDelete">{{ t('actions.delete') }}</button>
               </div>
             </div>
             <dl v-if="!editing" class="details-list">
@@ -76,7 +76,7 @@
               </div>
             </div>
             <button 
-              v-else 
+              v-else-if="authStore.canManageSensors"
               class="btn btn-secondary" 
               :disabled="generatingKey"
               @click="showGenerateConfirm"
@@ -185,10 +185,12 @@ import MainLayout from '@/components/layout/MainLayout.vue'
 import sensorsService from '@/services/endpoints/sensors'
 import type { Sensor } from '@/types'
 import { useLookupsStore } from '@/stores/lookups'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const lookups = useLookupsStore()
 const loading = ref(false)
 const saving = ref(false)
@@ -385,6 +387,7 @@ async function loadReadingsHistory(): Promise<void> {
 }
 
 function startEdit(): void {
+  if (!authStore.canManageSensors) return
   if (!sensor.value) return
   editForm.value = {
     serialNumber: sensor.value.serialNumber || '',
@@ -405,6 +408,7 @@ function zoneFromForm(): number | null {
 }
 
 async function saveEdit(): Promise<void> {
+  if (!authStore.canManageSensors) return
   if (!sensor.value) return
   error.value = ''
   successMessage.value = ''
@@ -432,6 +436,7 @@ async function saveEdit(): Promise<void> {
 }
 
 function showGenerateConfirm(): void {
+  if (!authStore.canManageSensors) return
   showingConfirm.value = true
 }
 
@@ -440,6 +445,7 @@ function cancelGenerateKey(): void {
 }
 
 async function confirmGenerateKey(): Promise<void> {
+  if (!authStore.canManageSensors) return
   if (!sensor.value) return
   showingConfirm.value = false
   generatingKey.value = true
@@ -473,11 +479,13 @@ async function copyApiKey(): Promise<void> {
 }
 
 function confirmDelete(): void {
+  if (!authStore.canManageSensors) return
   if (!sensor.value) return
   showDeleteModal.value = true
 }
 
 async function deleteSensor(): Promise<void> {
+  if (!authStore.canManageSensors) return
   if (!sensor.value) return
   deleting.value = true
   error.value = ''

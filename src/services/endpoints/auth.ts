@@ -1,7 +1,7 @@
 import { i18n } from '@/i18n'
 import apiClient from '../api/client'
 import type { LoginRequest, LoginResponse, User } from '@/types'
-import { decodeToken, ClaimTypes, isAdmin as checkIsAdmin } from '@/utils/jwt'
+import { decodeToken, ClaimTypes } from '@/utils/jwt'
 
 /**
  * Extract user data from JWT payload
@@ -24,7 +24,6 @@ function extractUserFromToken(token: string): User {
 export const authService = {
   /**
    * Login user with credentials
-   * Only Admin role is allowed to access admin panel
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<any>('/account/login', credentials)
@@ -49,17 +48,11 @@ export const authService = {
     
     console.log('Extracted token:', token.substring(0, 20) + '...')
     
-    // Check if user has Admin role BEFORE storing anything
-    if (!checkIsAdmin(token)) {
-      console.warn('Login rejected: user does not have Admin role')
-      throw new Error(i18n.global.t('login.errors.adminOnly'))
-    }
-    
     // Decode JWT to extract user data
     const user = extractUserFromToken(token)
     console.log('Extracted user from JWT:', user)
     
-    // Store tokens (only after admin check passed)
+    // Store tokens after successful login
     apiClient.setAuth(token, refreshToken || '')
     
     // Store user data

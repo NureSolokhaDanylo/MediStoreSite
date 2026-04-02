@@ -12,22 +12,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Getters
   const isAuthenticated = computed(() => !!user.value)
-  const isAdmin = computed(() => {
-    if (!user.value) return false
-    const role = user.value.role
-    if (Array.isArray(role)) {
-      return role.includes('Admin')
-    }
-    return role === 'Admin' || role === 'admin'
+  const normalizedRoles = computed(() => {
+    if (!user.value) return [] as string[]
+    const rawRoles = Array.isArray(user.value.role) ? user.value.role : [user.value.role]
+    return rawRoles
+      .map((role) => String(role || '').trim().toLowerCase())
+      .filter(Boolean)
   })
-  const isObserver = computed(() => {
-    if (!user.value) return false
-    const role = user.value.role
-    if (Array.isArray(role)) {
-      return role.includes('Observer')
-    }
-    return role === 'Observer'
-  })
+  const isAdmin = computed(() => normalizedRoles.value.includes('admin'))
+  const isOperator = computed(() => normalizedRoles.value.includes('operator'))
+  const isObserver = computed(() => normalizedRoles.value.includes('observer'))
   const fullName = computed(() => 
     user.value ? `${user.value.firstName || user.value.username} ${user.value.lastName || ''}`.trim() : ''
   )
@@ -54,6 +48,15 @@ export const useAuthStore = defineStore('auth', () => {
     return jwt.getTimeUntilExpiry(token)
   })
   const isTokenValid = computed(() => jwt.hasValidStoredToken())
+  const canManageMedicines = computed(() => isAdmin.value)
+  const canManageZones = computed(() => isAdmin.value)
+  const canManageSensors = computed(() => isAdmin.value)
+  const canManageUsers = computed(() => isAdmin.value)
+  const canViewLogs = computed(() => isAdmin.value)
+  const canManageSettings = computed(() => isAdmin.value)
+  const canManageBatches = computed(() => isAdmin.value || isOperator.value)
+  const canChangeOwnPassword = computed(() => isAuthenticated.value)
+  const hasActiveRole = computed(() => isAdmin.value || isOperator.value || isObserver.value)
 
   // Actions
   async function login(credentials: LoginRequest) {
@@ -112,12 +115,11 @@ export const useAuthStore = defineStore('auth', () => {
   
   // Check if user has specific role
   function hasRole(role: string): boolean {
-    if (!user.value) return false
-    const userRoles = user.value.role
-    if (Array.isArray(userRoles)) {
-      return userRoles.some(r => r.toLowerCase() === role.toLowerCase())
-    }
-    return userRoles.toLowerCase() === role.toLowerCase()
+    return normalizedRoles.value.includes(role.toLowerCase())
+  }
+
+  function hasAnyRole(candidateRoles: string[]): boolean {
+    return candidateRoles.some((role) => hasRole(role))
   }
 
   return {
@@ -129,13 +131,24 @@ export const useAuthStore = defineStore('auth', () => {
     // Getters
     isAuthenticated,
     isAdmin,
+    isOperator,
     isObserver,
     fullName,
     roles,
+    normalizedRoles,
     tokenInfo,
     tokenExpiresAt,
     tokenExpiresIn,
     isTokenValid,
+    canManageMedicines,
+    canManageZones,
+    canManageSensors,
+    canManageUsers,
+    canViewLogs,
+    canManageSettings,
+    canManageBatches,
+    canChangeOwnPassword,
+    hasActiveRole,
     
     // Actions
     login,
@@ -143,5 +156,6 @@ export const useAuthStore = defineStore('auth', () => {
     initializeAuth,
     clearError,
     hasRole,
+    hasAnyRole,
   }
 })

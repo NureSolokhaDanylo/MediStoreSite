@@ -14,7 +14,7 @@
           <section class="card">
             <div class="card-head">
       <h2>{{ t('fields.general') }}</h2>
-              <button v-if="!editing" class="btn btn-secondary" @click="startEdit">{{ t('actions.edit') }}</button>
+              <button v-if="!editing && authStore.canManageMedicines" class="btn btn-secondary" @click="startEdit">{{ t('actions.edit') }}</button>
             </div>
 
             <dl v-if="!editing" class="details-list">
@@ -122,9 +122,11 @@ import { useI18n } from 'vue-i18n'
 import batchesService from '@/services/endpoints/batches'
 import type { Batch } from '@/types'
 import { useLookupsStore } from '@/stores/lookups'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -182,6 +184,7 @@ async function loadMedicineDetails(): Promise<void> {
 }
 
 function startEdit(): void {
+  if (!authStore.canManageMedicines) return
   if (!medicine.value) return
   editForm.value = {
     name: medicine.value.name || '',
@@ -203,6 +206,7 @@ function isValidNumber(value: unknown): value is number {
 }
 
 async function saveEdit(): Promise<void> {
+  if (!authStore.canManageMedicines) return
   if (!medicine.value) return
   error.value = ''
   successMessage.value = ''

@@ -4,7 +4,7 @@
       <div class="toolbar">
         <h1>{{ t('pages.medicinesTitle') }}</h1>
         <div class="toolbar-right">
-          <button class="btn btn-primary" @click="startCreate">{{ t('actions.createNew') }}</button>
+          <button v-if="authStore.canManageMedicines" class="btn btn-primary" @click="startCreate">{{ t('actions.createNew') }}</button>
         </div>
       </div>
       <div class="search-controls">
@@ -108,8 +108,10 @@ import MainLayout from '@/components/layout/MainLayout.vue'
 import medicinesService from '@/services/endpoints/medicines'
 import type { Medicine, MedicineSearchResult } from '@/types'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const loading = ref(false)
 const error = ref('')
 const query = ref('')
@@ -191,6 +193,7 @@ function goNext(): void {
 }
 
 function startCreate(): void {
+  if (!authStore.canManageMedicines) return
   createError.value = ''
   creating.value = true
 }
@@ -208,6 +211,7 @@ function cancelCreate(): void {
 }
 
 async function submitCreate(): Promise<void> {
+  if (!authStore.canManageMedicines) return
   createError.value = ''
   if (!createForm.value.name.trim()) {
     createError.value = 'Name is required'

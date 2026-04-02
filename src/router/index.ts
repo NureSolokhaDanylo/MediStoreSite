@@ -60,19 +60,31 @@ const router = createRouter({
       path: '/users',
       name: 'users',
       component: () => import('../views/UsersView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, allowedRoles: ['admin'] },
     },
     {
       path: '/users/:id',
       name: 'user-details',
       component: () => import('../views/UserDetailsView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, allowedRoles: ['admin'] },
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/UserDetailsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/no-access',
+      name: 'no-access',
+      component: () => import('../views/NoAccessView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, allowedRoles: ['admin'] },
     },
     {
       path: '/zones',
@@ -90,7 +102,7 @@ const router = createRouter({
       path: '/logs',
       name: 'logs',
       component: () => import('../views/LogsView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, allowedRoles: ['admin'] },
     },
     {
       path: '/alerts',

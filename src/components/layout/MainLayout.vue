@@ -78,15 +78,16 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const navigation = computed(() => [
-  { name: 'medicines', label: t('navigation.medicines'), icon: '💊', to: '/medicines' },
-  { name: 'batches', label: t('navigation.batches'), icon: '📦', to: '/batches' },
-  { name: 'alerts', label: t('navigation.alerts'), icon: '🚨', to: '/alerts' },
-  { name: 'zones', label: t('navigation.zones'), icon: '🗺️', to: '/zones' },
-  { name: 'sensors', label: t('navigation.sensors'), icon: '🌡️', to: '/sensors' },
-  { name: 'logs', label: t('navigation.logs'), icon: '📜', to: '/logs' },
-  { name: 'users', label: t('navigation.users'), icon: '👥', to: '/users' },
-  { name: 'settings', label: t('navigation.settings'), icon: '⚙️', to: '/settings' },
-])
+  { name: 'medicines', label: t('navigation.medicines'), icon: '💊', to: '/medicines', visible: true },
+  { name: 'batches', label: t('navigation.batches'), icon: '📦', to: '/batches', visible: true },
+  { name: 'alerts', label: t('navigation.alerts'), icon: '🚨', to: '/alerts', visible: true },
+  { name: 'zones', label: t('navigation.zones'), icon: '🗺️', to: '/zones', visible: true },
+  { name: 'sensors', label: t('navigation.sensors'), icon: '🌡️', to: '/sensors', visible: true },
+  { name: 'logs', label: t('navigation.logs'), icon: '📜', to: '/logs', visible: authStore.canViewLogs },
+  { name: 'users', label: t('navigation.users'), icon: '👥', to: '/users', visible: authStore.canManageUsers },
+  { name: 'settings', label: t('navigation.settings'), icon: '⚙️', to: '/settings', visible: authStore.canManageSettings },
+  { name: 'profile', label: t('navigation.profile'), icon: '🙍', to: '/profile', visible: authStore.canChangeOwnPassword },
+].filter((item) => item.visible))
 
 const currentLocale = computed(() => getLocale())
 
@@ -112,6 +113,7 @@ function translateRole(role: string): string {
   if (!role) return ''
   const normalized = role.toLowerCase()
   if (normalized === 'admin') return t('roles.admin')
+  if (normalized === 'operator') return t('roles.operator')
   if (normalized === 'observer') return t('roles.observer')
   return t('roles.user')
 }

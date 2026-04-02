@@ -4,7 +4,7 @@
       <div class="toolbar">
         <h1>{{ t('pages.sensorsTitle') }}</h1>
         <div class="toolbar-right">
-          <button class="btn btn-primary" @click="startCreate">{{ t('actions.createNew') }}</button>
+          <button v-if="authStore.canManageSensors" class="btn btn-primary" @click="startCreate">{{ t('actions.createNew') }}</button>
         </div>
       </div>
       <div class="search-controls">
@@ -147,6 +147,7 @@ import { useI18n } from 'vue-i18n'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import sensorsService from '@/services/endpoints/sensors'
 import { useLookupsStore } from '@/stores/lookups'
+import { useAuthStore } from '@/stores/auth'
 
 type SensorRow = {
   id: number | string
@@ -161,6 +162,7 @@ type SensorRow = {
 }
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const loading = ref(false)
 const error = ref('')
 const query = ref('')
@@ -352,6 +354,7 @@ function goNext(): void {
 }
 
 function startCreate(): void {
+  if (!authStore.canManageSensors) return
   createError.value = ''
   creating.value = true
 }
@@ -362,6 +365,7 @@ function cancelCreate(): void {
 }
 
 async function submitCreate(): Promise<void> {
+  if (!authStore.canManageSensors) return
   createError.value = ''
   if (!createForm.value.serialNumber.trim()) {
     createError.value = t('pages.serialNumberRequired')

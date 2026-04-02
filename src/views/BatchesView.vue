@@ -20,6 +20,9 @@
             {{ t('pages.search') }}
           </button>
         </div>
+        <button v-if="authStore.canManageBatches" class="btn" @click="startCreate">
+          {{ t('actions.createNew') }}
+        </button>
       </div>
 
       <p v-if="loading" class="loading">{{ t('messages.loadingDetails') }}</p>
@@ -82,6 +85,51 @@
         <span class="loading">Total: {{ totalCount }} | skip {{ skip }} take {{ take }}</span>
         <button class="btn" :disabled="loading || skip + take >= totalCount" @click="goNext">{{ t('actions.next') }}</button>
       </div>
+
+      <div v-if="creating" class="modal-overlay">
+        <div class="modal-box">
+          <h3>{{ t('actions.create') }} {{ t('entities.batch') }}</h3>
+          <div class="modal-form">
+            <label class="field">
+              <span>{{ t('fields.batchNumber') }} *</span>
+              <input v-model.trim="createForm.batchNumber" class="input" />
+            </label>
+            <label class="field">
+              <span>{{ t('fields.quantity') }} *</span>
+              <input v-model.number="createForm.quantity" type="number" min="1" class="input" />
+            </label>
+            <label class="field">
+              <span>{{ t('pages.expireDate') }} *</span>
+              <input v-model="createForm.expireDate" type="date" class="input" />
+            </label>
+            <label class="field">
+              <span>{{ t('entities.medicine') }} *</span>
+              <select v-model.number="createForm.medicineId" class="input">
+                <option :value="0">{{ t('filters.chooseType') }}</option>
+                <option v-for="medicine in lookups.medicines" :key="medicine.id" :value="medicine.id">
+                  {{ medicine.name }}
+                </option>
+              </select>
+            </label>
+            <label class="field">
+              <span>{{ t('fields.zone') }} *</span>
+              <select v-model.number="createForm.zoneId" class="input">
+                <option :value="0">{{ t('filters.chooseType') }}</option>
+                <option v-for="zone in lookups.zones" :key="zone.id" :value="zone.id">
+                  {{ zone.name }}
+                </option>
+              </select>
+            </label>
+            <p v-if="createError" class="error">{{ createError }}</p>
+            <div class="modal-actions">
+              <button class="btn btn-secondary" :disabled="creatingInProgress" @click="cancelCreate">{{ t('actions.cancel') }}</button>
+              <button class="btn" :disabled="creatingInProgress" @click="submitCreate">
+                {{ creatingInProgress ? t('messages.creating') : t('actions.create') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -94,8 +142,10 @@ import batchesService from '@/services/endpoints/batches'
 import type { Batch, BatchSearchResult } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { useLookupsStore } from '@/stores/lookups'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const loading = ref(false)
 const error = ref('')
 const query = ref('')
@@ -103,9 +153,19 @@ const skip = ref(0)
 const take = ref(50)
 const totalCount = ref(0)
 const lookups = useLookupsStore()
+const creating = ref(false)
+const creatingInProgress = ref(false)
+const createError = ref('')
 
 type BatchRow = Partial<Batch> & Pick<Batch, 'id'>
 const batches = ref<BatchRow[]>([])
+const createForm = ref({
+  batchNumber: '',
+  quantity: 1,
+  expireDate: '',
+  medicineId: 0,
+  zoneId: 0,
+})
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : []
@@ -181,6 +241,66 @@ function goNext(): void {
   loadPage()
 }
 
+function startCreate(): void {
+  createError.value = ''
+  creating.value = true
+}
+
+function cancelCreate(): void {
+  creating.value = false
+  createForm.value = {
+    batchNumber: '',
+    quantity: 1,
+    expireDate: '',
+    medicineId: 0,
+    zoneId: 0,
+  }
+}
+
+async function submitCreate(): Promise<void> {
+  if (!authStore.canManageBatches) return
+  createError.value = ''
+  if (!createForm.value.batchNumber.trim()) {
+    createError.value = t('messages.required', { field: t('fields.batchNumber') })
+    return
+  }
+  if (!Number.isFinite(createForm.value.quantity) || createForm.value.quantity < 1) {
+    createError.value = t('pages.batchQuantityRequired')
+    return
+  }
+  if (!createForm.value.expireDate) {
+    createError.value = t('pages.batchExpireDateRequired')
+    return
+  }
+  if (createForm.value.medicineId <= 0) {
+    createError.value = t('pages.batchMedicineRequired')
+    return
+  }
+  if (createForm.value.zoneId <= 0) {
+    createError.value = t('pages.batchZoneRequired')
+    return
+  }
+
+  creatingInProgress.value = true
+  try {
+    await batchesService.create({
+      batchNumber: createForm.value.batchNumber.trim(),
+      quantity: createForm.value.quantity,
+      expireDate: createForm.value.expireDate,
+      medicineId: createForm.value.medicineId,
+      zoneId: createForm.value.zoneId,
+    })
+    creating.value = false
+    cancelCreate()
+    skip.value = 0
+    await loadPage()
+  } catch (e: any) {
+    createError.value = e?.message || t('messages.batchCreateFailed')
+  } finally {
+    creatingInProgress.value = false
+  }
+}
+
 onMounted(() => {
   lookups.ensureLoaded()
   loadPage()
@@ -205,4 +325,11 @@ onMounted(() => {
 .entity-link { color: var(--color-primary); text-decoration: none; }
 .entity-link:hover { text-decoration: underline; }
 .pagination { margin-top: .75rem; display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal-box { background: var(--color-surface-container-lowest); border-radius: .75rem; padding: 1.5rem; max-width: 500px; width: 100%; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
+.modal-form { display: flex; flex-direction: column; gap: .75rem; }
+.field { display: flex; flex-direction: column; gap: .35rem; }
+.input { padding: .5rem .75rem; border-radius: .375rem; border: 1px solid var(--color-outline-variant); background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
+.modal-actions { display: flex; justify-content: flex-end; gap: .5rem; }
+.btn-secondary { background: var(--color-surface-container); color: var(--color-on-surface); }
 </style>

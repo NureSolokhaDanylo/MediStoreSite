@@ -1,7 +1,7 @@
 <template>
   <MainLayout>
     <div class="page">
-      <h1>{{ t('pages.userDetailsTitle') }}</h1>
+      <h1>{{ pageTitle }}</h1>
 
       <p v-if="loading" class="loading">{{ t('messages.loadingDetails') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
@@ -17,16 +17,17 @@
             <div class="row"><dt>{{ t('fields.username') }}</dt><dd>{{ text(user.userName ?? user.username) }}</dd></div>
             <div class="row"><dt>{{ t('fields.roles') }}</dt><dd>{{ roleText(user.roles ?? user.role) }}</dd></div>
           </dl>
-          <div v-if="!isSelf" class="actions-section">
-            <button class="btn btn-primary" @click="openRolesModal">{{ t('pages.saveRoles') }}</button>
-            <button class="btn btn-primary" @click="openPasswordModal">{{ t('pages.savePassword') }}</button>
-            <button class="btn btn-danger" @click="confirmDelete">{{ t('actions.delete') }}</button>
+          <div v-if="canManageCurrentUser || isSelf" class="actions-section">
+            <button v-if="isSelf" class="btn btn-primary" @click="openPasswordModal">{{ t('pages.changeOwnPassword') }}</button>
+            <button v-if="canManageCurrentUser" class="btn btn-primary" @click="openRolesModal">{{ t('pages.saveRoles') }}</button>
+            <button v-if="canManageCurrentUser" class="btn btn-primary" @click="openPasswordModal">{{ t('pages.savePassword') }}</button>
+            <button v-if="canManageCurrentUser" class="btn btn-danger" @click="confirmDelete">{{ t('actions.delete') }}</button>
           </div>
         </section>
       </template>
 
       <!-- Roles modal -->
-      <div v-if="showRolesModal" class="modal-overlay">
+      <div v-if="showRolesModal && canManageCurrentUser" class="modal-overlay">
         <div class="modal">
           <h3>{{ t('pages.saveRoles') }}: {{ text(user?.userName ?? user?.username) }}</h3>
           <div class="field">
@@ -43,17 +44,18 @@
       <!-- Password modal -->
       <div v-if="showPasswordModal" class="modal-overlay">
         <div class="modal">
-          <h3>{{ t('pages.savePassword') }}: {{ text(user?.userName ?? user?.username) }}</h3>
+          <h3>{{ isSelf ? t('pages.changeOwnPassword') : t('pages.savePassword') }}: {{ text(user?.userName ?? user?.username) }}</h3>
+          <label v-if="isSelf" class="field">{{ t('pages.currentPassword') }} <input v-model="passwordForm.currentPassword" type="password" class="input" /></label>
           <label class="field">{{ t('pages.newPassword') }} <input v-model="passwordForm.newPassword" type="password" class="input" /></label>
           <div class="modal-actions">
             <button class="btn btn-secondary" @click="showPasswordModal = false">{{ t('actions.cancel') }}</button>
-            <button class="btn" :disabled="processingAction" @click="savePassword">{{ t('pages.savePassword') }}</button>
+            <button class="btn" :disabled="processingAction" @click="savePassword">{{ isSelf ? t('pages.changeOwnPassword') : t('pages.savePassword') }}</button>
           </div>
         </div>
       </div>
 
       <!-- Delete confirmation modal -->
-      <div v-if="showDeleteModal" class="modal-overlay">
+      <div v-if="showDeleteModal && canManageCurrentUser" class="modal-overlay">
         <div class="modal">
           <h3>{{ t('actions.delete') }} {{ t('entities.user') }}</h3>
           <p>{{ t('messages.deleteConfirmation', { name: text(user?.userName ?? user?.username) }) }}</p>
@@ -95,17 +97,27 @@ const rolesForm = ref({
 })
 
 const passwordForm = ref({
+  currentPassword: '',
   newPassword: '',
 })
 
+const pageTitle = computed(() => (route.name === 'profile' ? t('pages.profileTitle') : t('pages.userDetailsTitle')))
 const isSelf = computed(() => {
   if (!user.value) return false
   return String(authStore.user?.id || '') === String(user.value.id)
 })
+const canManageCurrentUser = computed(() => authStore.canManageUsers && !isSelf.value)
 
 function parseId(value: unknown): string | null {
   const raw = Array.isArray(value) ? value[0] : value
   return typeof raw === 'string' && raw.trim() ? raw : null
+}
+
+function resolveTargetUserId(): string | null {
+  if (route.name === 'profile') {
+    return authStore.user?.id ? String(authStore.user.id) : null
+  }
+  return parseId(route.params.id)
 }
 
 function text(value: unknown): string {
@@ -142,7 +154,7 @@ function openRolesModal(): void {
 
 function openPasswordModal(): void {
   if (!user.value) return
-  passwordForm.value = { newPassword: '' }
+  passwordForm.value = { currentPassword: '', newPassword: '' }
   showPasswordModal.value = true
 }
 
@@ -152,7 +164,7 @@ function confirmDelete(): void {
 }
 
 async function saveRoles(): Promise<void> {
-  if (!user.value) return
+  if (!user.value || !canManageCurrentUser.value) return
   processingAction.value = true
   error.value = ''
   successMessage.value = ''
@@ -179,11 +191,22 @@ async function savePassword(): Promise<void> {
   processingAction.value = true
   error.value = ''
   successMessage.value = ''
+  if (isSelf.value && !passwordForm.value.currentPassword) {
+    error.value = t('messages.required', { field: t('pages.currentPassword') })
+    processingAction.value = false
+    return
+  }
   try {
-    await usersService.changePassword({
-      targetUserId: String(user.value.id),
-      newPassword: passwordForm.value.newPassword,
-    })
+    const payload = isSelf.value
+      ? {
+          currentPassword: passwordForm.value.currentPassword || undefined,
+          newPassword: passwordForm.value.newPassword,
+        }
+      : {
+          targetUserId: String(user.value.id),
+          newPassword: passwordForm.value.newPassword,
+        }
+    await usersService.changePassword(payload)
     successMessage.value = t('messages.passwordUpdated')
     showPasswordModal.value = false
   } catch (e: any) {
@@ -194,7 +217,7 @@ async function savePassword(): Promise<void> {
 }
 
 async function deleteUser(): Promise<void> {
-  if (!user.value) return
+  if (!user.value || !canManageCurrentUser.value) return
   processingAction.value = true
   error.value = ''
   successMessage.value = ''
@@ -214,9 +237,9 @@ async function deleteUser(): Promise<void> {
 }
 
 async function load(): Promise<void> {
-  const id = parseId(route.params.id)
+  const id = resolveTargetUserId()
   if (!id) {
-    error.value = 'Invalid user id'
+    error.value = t('pages.requestFailed')
     user.value = null
     return
   }
