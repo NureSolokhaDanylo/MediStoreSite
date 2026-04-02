@@ -14,8 +14,8 @@
           <h2>{{ t('fields.general') }}</h2>
           <dl class="details-list">
             <div class="row"><dt>{{ t('fields.id') }}</dt><dd>{{ text(user.id) }}</dd></div>
-            <div class="row"><dt>{{ t('fields.username') }}</dt><dd>{{ text(user.username) }}</dd></div>
-            <div class="row"><dt>{{ t('fields.roles') }}</dt><dd>{{ roleText(user.role) }}</dd></div>
+            <div class="row"><dt>{{ t('fields.username') }}</dt><dd>{{ text(user.login || user.username) }}</dd></div>
+            <div class="row"><dt>{{ t('fields.roles') }}</dt><dd>{{ roleText(user.roles || user.role) }}</dd></div>
           </dl>
           <div class="actions-section">
             <button class="btn btn-primary" @click="openPasswordModal">{{ t('pages.changeOwnPassword') }}</button>
