@@ -78,15 +78,8 @@ export const authService = {
    * Logout current user
    */
   async logout(): Promise<void> {
-    try {
-      await apiClient.post('/account/logout')
-    } catch (error) {
-      // Even if API call fails, clear local auth
-      console.error('Logout API error:', error)
-    } finally {
-      apiClient.logout()
-      localStorage.removeItem('user')
-    }
+    apiClient.logout()
+    localStorage.removeItem('user')
   },
 
   /**
@@ -128,24 +121,6 @@ export const authService = {
    */
   isAuthenticated(): boolean {
     return apiClient.isAuthenticated() && !!this.getCurrentUser()
-  },
-
-  /**
-   * Refresh auth token
-   */
-  async refreshToken(): Promise<string> {
-    const refreshToken = localStorage.getItem('refresh_token')
-    if (!refreshToken) {
-      throw new Error('No refresh token available')
-    }
-
-    const response = await apiClient.post<{ token: string; refreshToken: string }>(
-      '/account/refresh',
-      { refreshToken }
-    )
-
-    apiClient.setAuth(response.data.token, response.data.refreshToken)
-    return response.data.token
   },
 }
 

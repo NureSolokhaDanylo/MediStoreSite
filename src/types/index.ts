@@ -95,6 +95,7 @@ export interface BatchCreateDto {
   batchNumber: string
   quantity: number
   expireDate: string
+  dateAdded: string
   medicineId: number
   zoneId: number
 }
@@ -131,10 +132,12 @@ export interface SensorUpdateDto {
 
 export interface Reading {
   id: number
-  sensorId: number
+  sensorId?: number
   temperature?: number | null
   humidity?: number | null
   timestamp?: string | null
+  timeStamp?: string | null
+  value?: number | null
 }
 
 export interface SensorReading {

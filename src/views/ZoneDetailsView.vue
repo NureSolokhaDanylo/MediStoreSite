@@ -225,7 +225,7 @@ async function saveEdit(): Promise<void> {
 
   saving.value = true
   try {
-    await zonesService.update({
+    await zonesService.update(zone.value.id, {
       id: zone.value.id,
       name: editForm.value.name.trim(),
       description: editForm.value.description.trim() || undefined,

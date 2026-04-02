@@ -67,13 +67,6 @@ export const alertsService = {
   },
 
   /**
-   * Mark alert as read
-   */
-  async markAsRead(id: number): Promise<void> {
-    await apiClient.patch(`/alerts/${id}/read`)
-  },
-
-  /**
    * Delete alert
    */
   async delete(id: number): Promise<void> {

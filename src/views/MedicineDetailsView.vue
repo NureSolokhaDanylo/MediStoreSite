@@ -244,7 +244,7 @@ async function saveEdit(): Promise<void> {
       humidMin: editForm.value.humidMin,
       humidMax: editForm.value.humidMax,
     }
-    await medicinesService.update(payload)
+    await medicinesService.update(medicine.value.id, payload)
     editing.value = false
     successMessage.value = t('messages.editMedicineSuccess')
     await loadMedicineDetails()

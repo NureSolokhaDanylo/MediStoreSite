@@ -181,6 +181,11 @@ function formatDate(value: string): string {
   return date.toLocaleString()
 }
 
+function asDateTime(value: string): string {
+  if (!value) return value
+  return value.length === 10 ? `${value}T00:00:00` : value
+}
+
 function medicineLabel(medicineId: number): string {
   return lookups.medicineNameById.get(medicineId) ?? `#${medicineId}`
 }
@@ -262,7 +267,7 @@ async function saveEdit(): Promise<void> {
       id: batch.value.id,
       batchNumber: editForm.value.batchNumber.trim(),
       quantity: editForm.value.quantity,
-      expireDate: editForm.value.expireDate,
+      expireDate: asDateTime(editForm.value.expireDate),
       dateAdded: editForm.value.dateAdded || batch.value.dateAdded,
       medicineId: editForm.value.medicineId,
       zoneId: editForm.value.zoneId,

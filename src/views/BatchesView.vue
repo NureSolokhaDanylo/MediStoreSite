@@ -192,6 +192,11 @@ function formatDate(value: string | undefined): string {
   return date.toLocaleDateString()
 }
 
+function asDateTime(value: string): string {
+  if (!value) return value
+  return value.length === 10 ? `${value}T00:00:00` : value
+}
+
 async function loadPage(): Promise<void> {
   loading.value = true
   error.value = ''
@@ -283,10 +288,12 @@ async function submitCreate(): Promise<void> {
 
   creatingInProgress.value = true
   try {
+    const dateAdded = new Date().toISOString()
     await batchesService.create({
       batchNumber: createForm.value.batchNumber.trim(),
       quantity: createForm.value.quantity,
-      expireDate: createForm.value.expireDate,
+      expireDate: asDateTime(createForm.value.expireDate),
+      dateAdded,
       medicineId: createForm.value.medicineId,
       zoneId: createForm.value.zoneId,
     })

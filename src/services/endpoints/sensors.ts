@@ -10,12 +10,19 @@ export interface SensorsPagedParams {
   zoneId?: number
 }
 
+export interface ReadingsQueryParams {
+  from?: string
+  to?: string
+}
+
 export const sensorsService = {
   /**
    * Get all sensors
    */
-  async getAll(): Promise<Sensor[]> {
-    const response = await apiClient.get<Sensor[]>('/sensors')
+  async getAll(zoneId?: number): Promise<Sensor[]> {
+    const response = await apiClient.get<Sensor[]>('/sensors', {
+      params: { zoneId },
+    })
     return response.data
   },
 
@@ -57,14 +64,19 @@ export const sensorsService = {
    * Delete sensor by ID
    */
   async delete(id: number): Promise<void> {
-    await apiClient.delete(`/sensors/${id}`)
+    await apiClient.delete('/sensors', { params: { id } })
   },
 
   /**
    * Get readings for a sensor
    */
-  async getReadings(sensorId: number): Promise<Reading[]> {
-    const response = await apiClient.get<Reading[]>(`/readings/sensor/${sensorId}`)
+  async getReadings(sensorId: number, params: ReadingsQueryParams = {}): Promise<Reading[]> {
+    const response = await apiClient.get<Reading[]>(`/readings/sensor/${sensorId}`, {
+      params: {
+        from: params.from,
+        to: params.to,
+      },
+    })
     return response.data
   },
 
@@ -89,8 +101,13 @@ export const sensorsService = {
   /**
    * Get readings for a zone
    */
-  async getZoneReadings(zoneId: number): Promise<Reading[]> {
-    const response = await apiClient.get<Reading[]>(`/readings/zone/${zoneId}`)
+  async getZoneReadings(zoneId: number, params: ReadingsQueryParams = {}): Promise<Reading[]> {
+    const response = await apiClient.get<Reading[]>(`/readings/zone/${zoneId}`, {
+      params: {
+        from: params.from,
+        to: params.to,
+      },
+    })
     return response.data
   },
 

@@ -24,8 +24,8 @@ export const zonesService = {
     return response.data
   },
 
-  async update(data: Zone): Promise<Zone> {
-    const response = await apiClient.put<Zone>('/zones', data)
+  async update(id: number, data: Zone): Promise<Zone> {
+    const response = await apiClient.put<Zone>(`/zones/${id}`, data)
     return response.data
   },
 

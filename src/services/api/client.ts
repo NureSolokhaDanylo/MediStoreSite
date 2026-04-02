@@ -5,7 +5,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:1400
 
 class ApiClient {
   private client: AxiosInstance
-  private refreshPromise: Promise<string> | null = null
 
   constructor() {
     this.client = axios.create({
@@ -39,40 +38,17 @@ class ApiClient {
         const originalRequest = error.config
 
         const requestUrl = String(originalRequest?.url || '')
-        const isAuthEndpoint =
-          requestUrl.includes('/account/login') ||
-          requestUrl.includes('/account/refresh') ||
-          requestUrl.includes('/account/logout')
-        const hasAccessToken = !!this.getToken()
-        const hasRefreshToken = !!this.getRefreshToken()
+        const isAuthEndpoint = requestUrl.includes('/account/login')
 
         // Handle 401 Unauthorized only for authenticated non-auth requests
         if (
           error.response?.status === 401 &&
           originalRequest &&
-          !isAuthEndpoint &&
-          hasAccessToken &&
-          hasRefreshToken
+          !isAuthEndpoint
         ) {
-          // Prevent infinite loop
-          if ((originalRequest as any)._retry) {
-            this.clearAuth()
-            window.location.href = '/login'
-            return Promise.reject(error)
-          }
-
-          (originalRequest as any)._retry = true
-
-          try {
-            // Try to refresh token
-            const newToken = await this.refreshToken()
-            originalRequest.headers.Authorization = `Bearer ${newToken}`
-            return this.client(originalRequest)
-          } catch (refreshError) {
-            this.clearAuth()
-            window.location.href = '/login'
-            return Promise.reject(refreshError)
-          }
+          this.clearAuth()
+          window.location.href = '/login'
+          return Promise.reject(error)
         }
 
         // Format error for consistent handling
@@ -91,10 +67,6 @@ class ApiClient {
     return localStorage.getItem('access_token')
   }
 
-  private getRefreshToken(): string | null {
-    return localStorage.getItem('refresh_token')
-  }
-
   private setTokens(accessToken: string, refreshToken: string) {
     localStorage.setItem('access_token', accessToken)
     localStorage.setItem('refresh_token', refreshToken)
@@ -106,37 +78,6 @@ class ApiClient {
     localStorage.removeItem('user')
   }
 
-  private async refreshToken(): Promise<string> {
-    // Prevent multiple simultaneous refresh requests
-    if (this.refreshPromise) {
-      return this.refreshPromise
-    }
-
-    this.refreshPromise = (async () => {
-      try {
-        const refreshToken = this.getRefreshToken()
-        if (!refreshToken) {
-          throw new Error('No refresh token available')
-        }
-
-        const response = await axios.post(
-          `${API_BASE_URL}/account/refresh`,
-          { refreshToken },
-          {
-            headers: { 'Content-Type': 'application/json' },
-          }
-        )
-
-        const { token, refreshToken: newRefreshToken } = response.data
-        this.setTokens(token, newRefreshToken)
-        return token
-      } finally {
-        this.refreshPromise = null
-      }
-    })()
-
-    return this.refreshPromise
-  }
 
   // Public API methods
   public get<T>(url: string, config = {}) {

@@ -452,14 +452,19 @@ function fileNameFromDisposition(value?: string): string | undefined {
   return simpleMatch?.[1]
 }
 
+function asDateTime(value: string): string {
+  if (!value) return value
+  return value.length === 10 ? `${value}T00:00:00` : value
+}
+
 async function generateReport(): Promise<void> {
   reportLoading.value = true
   reportError.value = ''
   reportSuccess.value = ''
   try {
     const result = await alertsService.generateAlertsReport({
-      from: reportFrom.value || undefined,
-      to: reportTo.value || undefined,
+      from: reportFrom.value ? asDateTime(reportFrom.value) : undefined,
+      to: reportTo.value ? asDateTime(reportTo.value) : undefined,
     })
     const contentType = result.contentType.toLowerCase()
 

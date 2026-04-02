@@ -39,8 +39,8 @@ export const medicinesService = {
   /**
    * Update medicine
    */
-  async update(data: MedicineUpdateDto): Promise<Medicine> {
-    const response = await apiClient.put<Medicine>('/medicines', data)
+  async update(id: number, data: MedicineUpdateDto): Promise<Medicine> {
+    const response = await apiClient.put<Medicine>(`/medicines/${id}`, data)
     return response.data
   },
 
