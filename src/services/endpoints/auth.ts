@@ -1,5 +1,7 @@
 import { i18n } from '@/i18n'
-import apiClient from '../api/client'
+import { accountApi } from '../api/sdk'
+import { getStoredUser, isSessionActive, setStoredSession, setStoredUser, clearStoredSession } from '../api/session'
+import { wrapApiCall } from '../api/errors'
 import type { LoginRequest, LoginResponse, User } from '@/types'
 import { decodeToken, ClaimTypes } from '@/utils/jwt'
 
@@ -26,51 +28,49 @@ function extractUserFromToken(token: string): User {
   }
 }
 
+function mapCurrentUser(user: { id: string; login?: string | null; roles?: string[] }): User {
+  const login = user.login || ''
+
+  return {
+    id: user.id,
+    login,
+    username: login,
+    userName: login,
+    roles: Array.isArray(user.roles) ? user.roles : [],
+    role: Array.isArray(user.roles) ? user.roles : [],
+  }
+}
+
 export const authService = {
   /**
-   * Login user with credentials
+   * Wrapper for `accountLogin` (`POST /api/v1/account/login`).
+   * Required roles: not specified in OpenAPI.
+   * Throws `AppApiError` with codes: auth.invalid_credentials.
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await apiClient.post<any>('/account/login', credentials)
-    
-    console.log('Raw login response:', response.data)
-    
-    // Handle different possible response formats
-    let token: string
-    let refreshToken: string | undefined
-    
-    if (response.data.token) {
-      // Direct format: { token } or { token, refreshToken }
-      token = response.data.token
-      refreshToken = response.data.refreshToken
-    } else if (response.data.data && response.data.data.token) {
-      // Wrapped format: { data: { token, ... } }
-      token = response.data.data.token
-      refreshToken = response.data.data.refreshToken
-    } else {
+    const response = await wrapApiCall(() =>
+      accountApi.accountLogin({
+        loginRequestDto: credentials,
+      }),
+    )
+
+    const token = response.token
+    if (!token) {
       throw new Error(i18n.global.t('login.errors.invalidResponse'))
     }
-    
-    console.log('Extracted token:', token.substring(0, 20) + '...')
-    
-    // Decode JWT to extract user data
+
     const user = extractUserFromToken(token)
-    console.log('Extracted user from JWT:', user)
-    
-    // Store tokens after successful login
-    apiClient.setAuth(token, refreshToken || '')
-    
-    // Store user data
-    localStorage.setItem('user', JSON.stringify(user))
-    
+
+    setStoredSession({
+      accessToken: token,
+      user,
+    })
+
     const loginData: LoginResponse = {
       token,
-      refreshToken,
       user,
     }
-    
-    console.log('Parsed login data:', loginData)
-    
+
     return loginData
   },
 
@@ -78,49 +78,40 @@ export const authService = {
    * Logout current user
    */
   async logout(): Promise<void> {
-    apiClient.logout()
-    localStorage.removeItem('user')
+    clearStoredSession()
   },
 
   /**
-   * Get current user info from API
+   * Wrapper for `accountMe` (`GET /api/v1/account/me`).
+   * Required roles: not specified in OpenAPI.
+   * Throws `AppApiError` with codes: auth.unauthorized.
    */
   async getCurrentUserFromApi(): Promise<User> {
-    const response = await apiClient.get<User>('/account/me')
-    
-    // Update localStorage
-    localStorage.setItem('user', JSON.stringify(response.data))
-    
-    return response.data
+    const response = await wrapApiCall(() => accountApi.accountMe())
+    const user = mapCurrentUser(response)
+    setStoredUser(user)
+    return user
   },
 
   /**
    * Get current user profile from API (alias for getCurrentUserFromApi)
    */
   async getMe(): Promise<User> {
-    const response = await apiClient.get<User>('/account/me')
-    return response.data
+    return this.getCurrentUserFromApi()
   },
 
   /**
    * Get current user from localStorage
    */
   getCurrentUser(): User | null {
-    const userJson = localStorage.getItem('user')
-    if (!userJson) return null
-    
-    try {
-      return JSON.parse(userJson) as User
-    } catch {
-      return null
-    }
+    return getStoredUser()
   },
 
   /**
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {
-    return apiClient.isAuthenticated() && !!this.getCurrentUser()
+    return isSessionActive() && !!this.getCurrentUser()
   },
 }
 

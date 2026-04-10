@@ -33,24 +33,28 @@
               <th>{{ t('fields.id') }}</th>
               <th>{{ t('fields.username') }}</th>
               <th>{{ t('fields.roles') }}</th>
+              <th>{{ t('fields.actions') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!loading && users.length === 0">
-              <td colspan="3">{{ t('pages.noData') }}</td>
+              <td colspan="4">{{ t('pages.noData') }}</td>
             </tr>
             <tr v-for="user in users" :key="user.id">
-              <td>
-                <RouterLink :to="{ name: 'user-details', params: { id: user.id } }" class="entity-link">
-                  {{ user.id }}
-                </RouterLink>
+              <td>{{ user.id }}</td>
+              <td>{{ user.userName }}</td>
+              <td>{{ roleText(user.roles) }}</td>
+              <td class="row-actions">
+                <button class="btn btn-small" :disabled="processingAction || isSelf(user)" @click="openRolesModal(user)">
+                  {{ t('pages.saveRoles') }}
+                </button>
+                <button class="btn btn-small" :disabled="processingAction || isSelf(user)" @click="openPasswordModal(user)">
+                  {{ t('pages.savePassword') }}
+                </button>
+                <button class="btn btn-danger btn-small" :disabled="processingAction || isSelf(user)" @click="confirmDelete(user)">
+                  {{ t('actions.delete') }}
+                </button>
               </td>
-              <td>
-                <RouterLink :to="{ name: 'user-details', params: { id: user.id } }" class="entity-link">
-                  {{ user.username }}
-                </RouterLink>
-              </td>
-              <td>{{ user.roles }}</td>
             </tr>
           </tbody>
         </table>
@@ -78,37 +82,73 @@
           </div>
         </div>
       </div>
+
+      <div v-if="showRolesModal && selectedUser" class="modal-overlay">
+        <div class="modal">
+          <h3>{{ t('pages.saveRoles') }}: {{ selectedUser.userName }}</h3>
+          <div class="field">
+            <span>{{ t('fields.roles') }}</span>
+            <label><input type="checkbox" v-model="rolesForm.observer" /> observer</label>
+            <label><input type="checkbox" v-model="rolesForm.operator" /> operator</label>
+          </div>
+          <div class="modal-actions">
+            <button class="btn" @click="showRolesModal = false">{{ t('actions.cancel') }}</button>
+            <button class="btn btn-add" :disabled="processingAction" @click="saveRoles">{{ t('pages.saveRoles') }}</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showPasswordModal && selectedUser" class="modal-overlay">
+        <div class="modal">
+          <h3>{{ t('pages.savePassword') }}: {{ selectedUser.userName }}</h3>
+          <label class="field">{{ t('pages.newPassword') }} <input v-model="passwordForm.newPassword" type="password" class="search-input" /></label>
+          <div class="modal-actions">
+            <button class="btn" @click="showPasswordModal = false">{{ t('actions.cancel') }}</button>
+            <button class="btn btn-add" :disabled="processingAction" @click="savePassword">{{ t('pages.savePassword') }}</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showDeleteModal && selectedUser" class="modal-overlay">
+        <div class="modal">
+          <h3>{{ t('actions.delete') }} {{ t('entities.user') }}</h3>
+          <p>{{ t('messages.deleteConfirmation', { name: selectedUser.userName }) }}</p>
+          <div class="modal-actions">
+            <button class="btn" @click="showDeleteModal = false">{{ t('actions.cancel') }}</button>
+            <button class="btn btn-danger" :disabled="processingAction" @click="deleteUser">{{ t('actions.delete') }}</button>
+          </div>
+        </div>
+      </div>
     </div>
   </MainLayout>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import usersService from '@/services/endpoints/users'
 import { useAuthStore } from '@/stores/auth'
-
-type UserRow = {
-  id: string
-  username: string
-  roles: string
-}
+import type { UserDto } from '@/sdk/generated'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const loading = ref(false)
 const error = ref('')
 const successMessage = ref('')
 const query = ref('')
 const role = ref('')
-const users = ref<UserRow[]>([])
+const users = ref<UserDto[]>([])
 const skip = ref(0)
 const take = ref(50)
 const totalCount = ref(0)
 const processingAction = ref(false)
 
 const showCreateModal = ref(false)
+const showRolesModal = ref(false)
+const showPasswordModal = ref(false)
+const showDeleteModal = ref(false)
+const selectedUser = ref<UserDto | null>(null)
 
 const createForm = ref({
   userName: '',
@@ -117,62 +157,47 @@ const createForm = ref({
   operator: false,
 })
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : null
+const rolesForm = ref({
+  observer: false,
+  operator: false,
+})
+
+const passwordForm = ref({
+  newPassword: '',
+})
+
+function roleText(roles?: string[] | null): string {
+  return roles?.length ? roles.join(', ') : '-'
 }
 
-function asArray(value: unknown): unknown[] {
-  if (Array.isArray(value)) return value
-  const record = asRecord(value)
-  if (!record) return []
-
-  const directCandidates = [record.items, record.users, record.data, record.result]
-  for (const candidate of directCandidates) {
-    if (Array.isArray(candidate)) return candidate
-  }
-
-  const nested = asRecord(record.data)
-  if (Array.isArray(nested?.items)) return nested.items
-  if (Array.isArray(nested?.users)) return nested.users
-
-  return []
-}
-
-function text(value: unknown, fallback = '-'): string {
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : fallback
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  return fallback
-}
-
-function roleText(value: unknown): string {
-  if (Array.isArray(value)) {
-    const parts = value.map((item) => text(item, '')).filter(Boolean)
-    return parts.length > 0 ? parts.join(', ') : '-'
-  }
-  return text(value)
-}
-
-function normalizeUser(item: unknown): UserRow | null {
-  const row = asRecord(item)
-  if (!row) return null
-
-  const id = row.id ?? row.userId ?? row.sub
-  const username = row.userName ?? row.username ?? row.login ?? row.name
-  const roles = row.roles ?? row.role
-
-  return {
-    id: text(id),
-    username: text(username),
-    roles: roleText(roles),
-  }
+function isSelf(user: UserDto): boolean {
+  return String(authStore.user?.id || '') === String(user.id)
 }
 
 function openCreateModal(): void {
   createForm.value = { userName: '', password: '', observer: false, operator: false }
   showCreateModal.value = true
+}
+
+function openRolesModal(user: UserDto): void {
+  selectedUser.value = user
+  const normalizedRoles = user.roles?.map((item) => item.toLowerCase()) ?? []
+  rolesForm.value = {
+    observer: normalizedRoles.includes('observer'),
+    operator: normalizedRoles.includes('operator'),
+  }
+  showRolesModal.value = true
+}
+
+function openPasswordModal(user: UserDto): void {
+  selectedUser.value = user
+  passwordForm.value = { newPassword: '' }
+  showPasswordModal.value = true
+}
+
+function confirmDelete(user: UserDto): void {
+  selectedUser.value = user
+  showDeleteModal.value = true
 }
 
 async function createUser(): Promise<void> {
@@ -199,6 +224,68 @@ async function createUser(): Promise<void> {
   }
 }
 
+async function saveRoles(): Promise<void> {
+  if (!selectedUser.value) return
+  processingAction.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    const roles: string[] = []
+    if (rolesForm.value.observer) roles.push('Observer')
+    if (rolesForm.value.operator) roles.push('Operator')
+    await usersService.changeRoles({
+      targetUserId: selectedUser.value.id,
+      roles,
+    })
+    successMessage.value = t('messages.rolesUpdated')
+    showRolesModal.value = false
+    selectedUser.value = null
+    await loadUsers()
+  } catch (e: any) {
+    error.value = e?.message || t('pages.requestFailed')
+  } finally {
+    processingAction.value = false
+  }
+}
+
+async function savePassword(): Promise<void> {
+  if (!selectedUser.value || !passwordForm.value.newPassword) return
+  processingAction.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    await usersService.changePassword({
+      targetUserId: selectedUser.value.id,
+      newPassword: passwordForm.value.newPassword,
+    })
+    successMessage.value = t('messages.passwordUpdated')
+    showPasswordModal.value = false
+    selectedUser.value = null
+  } catch (e: any) {
+    error.value = e?.message || t('pages.requestFailed')
+  } finally {
+    processingAction.value = false
+  }
+}
+
+async function deleteUser(): Promise<void> {
+  if (!selectedUser.value) return
+  processingAction.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    await usersService.deleteById(selectedUser.value.id)
+    successMessage.value = t('messages.userDeleted')
+    showDeleteModal.value = false
+    selectedUser.value = null
+    await loadUsers()
+  } catch (e: any) {
+    error.value = e?.message || t('pages.requestFailed')
+  } finally {
+    processingAction.value = false
+  }
+}
+
 async function loadUsers(): Promise<void> {
   loading.value = true
   error.value = ''
@@ -209,12 +296,8 @@ async function loadUsers(): Promise<void> {
       q: query.value || undefined,
       role: role.value || undefined,
     })
-    const record = asRecord(response)
-    totalCount.value = typeof record?.totalCount === 'number' ? record.totalCount : 0
-    users.value = asArray(response)
-      .map((item) => normalizeUser(item))
-      .filter((item): item is UserRow => item !== null)
-    if (totalCount.value === 0) totalCount.value = users.value.length
+    totalCount.value = response.totalCount
+    users.value = response.items
   } catch (e: any) {
     error.value = e?.message || t('pages.requestFailed')
     users.value = []

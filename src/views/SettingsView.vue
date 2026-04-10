@@ -14,31 +14,31 @@
         <div class="form-grid">
           <label class="field">
             <span>{{ t('pages.settingsAlertEnabled') }}</span>
-            <input type="checkbox" v-model="form.alertEnabled" />
+            <input type="checkbox" v-model="form.alertEnabled" :disabled="readonlyMode || saving" />
           </label>
 
           <label class="field">
             <span>{{ t('pages.settingsTempAlertDeviation') }}</span>
-            <input type="number" step="0.1" class="input" v-model.number="form.tempAlertDeviation" />
+            <input type="number" step="0.1" class="input" v-model.number="form.tempAlertDeviation" :disabled="readonlyMode || saving" />
           </label>
 
           <label class="field">
             <span>{{ t('pages.settingsHumidityAlertDeviation') }}</span>
-            <input type="number" step="0.1" class="input" v-model.number="form.humidityAlertDeviation" />
+            <input type="number" step="0.1" class="input" v-model.number="form.humidityAlertDeviation" :disabled="readonlyMode || saving" />
           </label>
 
           <label class="field">
             <span>{{ t('pages.settingsCheckDeviationInterval') }}</span>
-            <input type="text" class="input" v-model.trim="form.checkDeviationInterval" />
+            <input type="text" class="input" v-model.trim="form.checkDeviationInterval" :disabled="readonlyMode || saving" />
           </label>
 
           <label class="field">
             <span>{{ t('pages.settingsReadingsRetentionDays') }}</span>
-            <input type="number" class="input" min="1" v-model.number="form.readingsRetentionDays" />
+            <input type="number" class="input" min="1" v-model.number="form.readingsRetentionDays" :disabled="readonlyMode || saving" />
           </label>
         </div>
 
-        <div class="actions">
+        <div v-if="authStore.canManageSettings" class="actions">
           <button class="btn-secondary" :disabled="saving" @click="resetForm">{{ t('pages.reset') }}</button>
           <button class="btn" :disabled="saving || !canSave" @click="saveSettings">
             {{ saving ? t('messages.saving') : t('pages.saveSettings') }}
@@ -54,8 +54,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import settingsService, { type AppSettingsDto } from '@/services/endpoints/settings'
+import { useAuthStore } from '@/stores/auth'
+import type { AppSettings } from '@/sdk/generated'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
@@ -63,36 +66,18 @@ const successMessage = ref('')
 const form = ref<AppSettingsDto | null>(null)
 const initialSettings = ref<AppSettingsDto | null>(null)
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
-}
-
-function text(value: unknown, fallback = '-'): string {
-  if (value === null || value === undefined) return fallback
-  if (typeof value === 'string') return value.trim() || fallback
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  return String(value)
-}
-
-function normalizeSettings(value: unknown): AppSettingsDto | null {
-  const source = asRecord(value)
-  if (!source) return null
-
-  // hide accidental lazyLoader property by ignoring everything except AppSettingsDto fields
-  const normalized: AppSettingsDto = {
-    alertEnabled: Boolean(source.alertEnabled),
-    tempAlertDeviation: Number(source.tempAlertDeviation ?? 0),
-    humidityAlertDeviation: Number(source.humidityAlertDeviation ?? 0),
-    checkDeviationInterval: text(source.checkDeviationInterval, '00:05:00'),
-    readingsRetentionDays: Number(source.readingsRetentionDays ?? 30),
+function settingsToForm(settings: AppSettings): AppSettingsDto {
+  return {
+    alertEnabled: settings.alertEnabled ?? false,
+    tempAlertDeviation: settings.tempAlertDeviation ?? 0,
+    humidityAlertDeviation: settings.humidityAlertDeviation ?? 0,
+    checkDeviationInterval: settings.checkDeviationInterval?.trim() || '00:05:00',
+    readingsRetentionDays: settings.readingsRetentionDays ?? 30,
   }
-
-  return normalized
 }
 
 const canSave = computed(() => {
+  if (!authStore.canManageSettings) return false
   if (!form.value) return false
   if (!form.value.checkDeviationInterval) return false
   if (!Number.isFinite(form.value.tempAlertDeviation)) return false
@@ -101,16 +86,15 @@ const canSave = computed(() => {
   return true
 })
 
+const readonlyMode = computed(() => !authStore.canManageSettings)
+
 async function loadSettings(): Promise<void> {
   loading.value = true
   error.value = ''
   successMessage.value = ''
   try {
     const response = await settingsService.get()
-    const normalized = normalizeSettings(response)
-    if (!normalized) {
-      throw new Error(t('messages.unexpectedSettingsResponse'))
-    }
+    const normalized = settingsToForm(response)
     form.value = { ...normalized }
     initialSettings.value = { ...normalized }
   } catch (e: any) {

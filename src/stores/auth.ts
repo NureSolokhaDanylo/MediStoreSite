@@ -4,6 +4,37 @@ import { authService } from '@/services/endpoints/auth'
 import type { User, LoginRequest } from '@/types'
 import * as jwt from '@/utils/jwt'
 
+type Capability =
+  | 'alerts.report'
+  | 'batches.manage'
+  | 'logs.view'
+  | 'medicines.manage'
+  | 'sensors.manage'
+  | 'settings.manage'
+  | 'settings.view'
+  | 'users.manage'
+  | 'zones.manage'
+
+const ROLE_CAPABILITIES: Record<string, Capability[]> = {
+  admin: [
+    'alerts.report',
+    'logs.view',
+    'medicines.manage',
+    'sensors.manage',
+    'settings.manage',
+    'settings.view',
+    'users.manage',
+    'zones.manage',
+  ],
+  observer: [
+    'alerts.report',
+  ],
+  operator: [
+    'batches.manage',
+    'settings.view',
+  ],
+}
+
 export const useAuthStore = defineStore('auth', () => {
   // State
   const user = ref<User | null>(null)
@@ -23,6 +54,17 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => normalizedRoles.value.includes('admin'))
   const isOperator = computed(() => normalizedRoles.value.includes('operator'))
   const isObserver = computed(() => normalizedRoles.value.includes('observer'))
+  const capabilitySet = computed(() => {
+    const capabilities = new Set<Capability>()
+
+    for (const role of normalizedRoles.value) {
+      for (const capability of ROLE_CAPABILITIES[role] ?? []) {
+        capabilities.add(capability)
+      }
+    }
+
+    return capabilities
+  })
   const fullName = computed(() => 
     user.value
       ? `${user.value.firstName || user.value.login || user.value.username || ''} ${user.value.lastName || ''}`.trim()
@@ -51,13 +93,15 @@ export const useAuthStore = defineStore('auth', () => {
     return jwt.getTimeUntilExpiry(token)
   })
   const isTokenValid = computed(() => jwt.hasValidStoredToken())
-  const canManageMedicines = computed(() => isAdmin.value)
-  const canManageZones = computed(() => isAdmin.value)
-  const canManageSensors = computed(() => isAdmin.value)
-  const canManageUsers = computed(() => isAdmin.value)
-  const canViewLogs = computed(() => isAdmin.value)
-  const canManageSettings = computed(() => isAdmin.value)
-  const canManageBatches = computed(() => isOperator.value)
+  const canManageMedicines = computed(() => capabilitySet.value.has('medicines.manage'))
+  const canManageZones = computed(() => capabilitySet.value.has('zones.manage'))
+  const canManageSensors = computed(() => capabilitySet.value.has('sensors.manage'))
+  const canManageUsers = computed(() => capabilitySet.value.has('users.manage'))
+  const canViewLogs = computed(() => capabilitySet.value.has('logs.view'))
+  const canViewSettings = computed(() => capabilitySet.value.has('settings.view'))
+  const canManageSettings = computed(() => capabilitySet.value.has('settings.manage'))
+  const canManageBatches = computed(() => capabilitySet.value.has('batches.manage'))
+  const canGenerateAlertsReport = computed(() => capabilitySet.value.has('alerts.report'))
   const canChangeOwnPassword = computed(() => isAuthenticated.value)
   const hasActiveRole = computed(() => isAdmin.value || isOperator.value || isObserver.value)
 
@@ -148,8 +192,10 @@ export const useAuthStore = defineStore('auth', () => {
     canManageSensors,
     canManageUsers,
     canViewLogs,
+    canViewSettings,
     canManageSettings,
     canManageBatches,
+    canGenerateAlertsReport,
     canChangeOwnPassword,
     hasActiveRole,
     

@@ -85,7 +85,7 @@ const navigation = computed(() => [
   { name: 'sensors', label: t('navigation.sensors'), icon: '🌡️', to: '/sensors', visible: true },
   { name: 'logs', label: t('navigation.logs'), icon: '📜', to: '/logs', visible: authStore.canViewLogs },
   { name: 'users', label: t('navigation.users'), icon: '👥', to: '/users', visible: authStore.canManageUsers },
-  { name: 'settings', label: t('navigation.settings'), icon: '⚙️', to: '/settings', visible: authStore.canManageSettings },
+  { name: 'settings', label: t('navigation.settings'), icon: '⚙️', to: '/settings', visible: authStore.canViewSettings },
   { name: 'profile', label: t('navigation.profile'), icon: '🙍', to: '/profile', visible: authStore.canChangeOwnPassword },
 ].filter((item) => item.visible))
 

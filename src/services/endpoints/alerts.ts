@@ -1,4 +1,6 @@
-import apiClient from '../api/client'
+import { alertsApi, reportApi } from '../api/sdk'
+import { wrapApiCall } from '../api/errors'
+import { mapAlert, mapAlertPage } from '../api/adapters'
 import type { Alert, AlertDtoPagedResultDto } from '@/types'
 
 export interface FilteredAlertsParams {
@@ -22,56 +24,82 @@ export interface AlertsReportResult {
 
 export const alertsService = {
   /**
-   * Get all alerts
+   * Wrapper for `alertsGetAll` (`GET /api/v1/alerts`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized.
    */
   async getAllAlerts(): Promise<Alert[]> {
-    const response = await apiClient.get<Alert[]>('/alerts')
-    return response.data
+    const response = await wrapApiCall(() => alertsApi.alertsGetAll())
+    return response.map(mapAlert)
   },
 
+  /**
+   * Wrapper for `alertsGetFiltered` (`GET /api/v1/alerts/filtered`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: alert.retrieval_failed, auth.forbidden, auth.unauthorized.
+   */
   async getFilteredAlerts(params: FilteredAlertsParams = {}): Promise<AlertDtoPagedResultDto> {
-    const response = await apiClient.get<AlertDtoPagedResultDto>('/alerts/filtered', {
-      params: {
-        Skip: params.Skip ?? 0,
-        Take: params.Take ?? 50,
-        IsActive: params.IsActive,
-        ZoneId: params.ZoneId,
-        BatchId: params.BatchId,
-      },
-    })
-    return response.data
+    const response = await wrapApiCall(() =>
+      alertsApi.alertsGetFiltered({
+        skip: params.Skip ?? 0,
+        take: params.Take ?? 50,
+        isActive: params.IsActive,
+        zoneId: params.ZoneId,
+        batchId: params.BatchId,
+      }),
+    )
+    return mapAlertPage(response)
   },
 
+  /**
+   * Wrapper for `alertsGet` (`GET /api/v1/alerts/{id}`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, common.not_found.
+   */
   async getById(id: number): Promise<Alert> {
-    const response = await apiClient.get<Alert>(`/alerts/${id}`)
-    return response.data
+    const response = await wrapApiCall(() => alertsApi.alertsGet({ id }))
+    return mapAlert(response)
   },
 
+  /**
+   * Wrapper for `reportAlertsReport` (`GET /api/v1/reports/alerts`).
+   * Required roles: Admin, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, report.invalid_time_range.
+   */
   async generateAlertsReport(params: AlertsReportParams = {}): Promise<AlertsReportResult> {
-    const response = await apiClient.get<Blob>('/reports/alerts', {
-      params: {
-        from: params.from,
-        to: params.to,
-      },
-      responseType: 'blob',
-    })
+    const response = await wrapApiCall(() =>
+      reportApi.reportAlertsReport({
+        from: toDateValue(params.from),
+        to: toDateValue(params.to),
+      }),
+    )
+
     return {
-      data: response.data,
-      contentType: String(response.headers?.['content-type'] || ''),
-      contentDisposition: response.headers?.['content-disposition'],
+      data: response,
+      contentType: 'application/pdf',
     }
   },
 
   async getAll(): Promise<Alert[]> {
     return this.getAllAlerts()
   },
-
-  /**
-   * Delete alert
-   */
-  async delete(id: number): Promise<void> {
-    await apiClient.delete(`/alerts/${id}`)
-  },
 }
 
 export default alertsService
+
+function toDateValue(value?: string): Date | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const normalized = value.trim()
+  if (!normalized) {
+    return undefined
+  }
+
+  const candidate = normalized.length === 10
+    ? new Date(`${normalized}T00:00:00.000Z`)
+    : new Date(normalized)
+
+  return Number.isNaN(candidate.getTime()) ? undefined : candidate
+}

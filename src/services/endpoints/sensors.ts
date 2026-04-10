@@ -1,4 +1,6 @@
-import apiClient from '../api/client'
+import { readingsApi, sensorsApi } from '../api/sdk'
+import { wrapApiCall } from '../api/errors'
+import { mapReading, mapSensor, mapSensorPage, toSdkSensorCreateDto, toSdkSensorUpdateDto } from '../api/adapters'
 import type { Sensor, Reading, PagedResult, SensorUpdateDto } from '@/types'
 
 export interface SensorsPagedParams {
@@ -17,107 +19,167 @@ export interface ReadingsQueryParams {
 
 export const sensorsService = {
   /**
-   * Get all sensors
+   * Wrapper for `sensorsGetSensors` (`GET /api/v1/sensors`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, sensor.retrieval_failed.
    */
   async getAll(zoneId?: number): Promise<Sensor[]> {
-    const response = await apiClient.get<Sensor[]>('/sensors', {
-      params: { zoneId },
-    })
-    return response.data
+    const response = await wrapApiCall(() =>
+      sensorsApi.sensorsGetSensors({
+        zoneId,
+      }),
+    )
+    return response.map(mapSensor)
   },
 
+  /**
+   * Wrapper for `sensorsGetSensorsPaged` (`GET /api/v1/sensors/paged`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, sensor.invalid_paging, sensor.retrieval_failed.
+   */
   async getPaged(params: SensorsPagedParams = {}): Promise<PagedResult<Sensor>> {
-    const response = await apiClient.get<PagedResult<Sensor>>('/sensors/paged', {
-      params: {
+    const response = await wrapApiCall(() =>
+      sensorsApi.sensorsGetSensorsPaged({
         skip: params.skip ?? 0,
         take: params.take ?? 50,
         q: params.q,
         sensorType: params.sensorType,
         isOn: params.isOn,
         zoneId: params.zoneId,
-      },
-    })
-    return response.data
+      }),
+    )
+    return mapSensorPage(response)
   },
 
   /**
-   * Get sensor by ID
+   * Wrapper for `sensorsGet` (`GET /api/v1/sensors/{id}`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, sensor.not_found.
    */
   async getById(id: number): Promise<Sensor> {
-    const response = await apiClient.get<Sensor>(`/sensors/${id}`)
-    return response.data
-  },
-
-  async update(data: SensorUpdateDto): Promise<void> {
-    await apiClient.put('/sensors', data)
+    const response = await wrapApiCall(() => sensorsApi.sensorsGet({ id }))
+    return mapSensor(response)
   },
 
   /**
-   * Create new sensor
+   * Wrapper for `sensorsUpdateAllowedFields` (`PUT /api/v1/sensors`).
+   * Required roles: Admin.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, sensor.not_found.
+   */
+  async update(data: SensorUpdateDto): Promise<void> {
+    await wrapApiCall(() =>
+      sensorsApi.sensorsUpdateAllowedFields({
+        sensorUpdateDto: toSdkSensorUpdateDto(data),
+      }),
+    )
+  },
+
+  /**
+   * Wrapper for `sensorsCreate` (`POST /api/v1/sensors`).
+   * Required roles: Admin.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, sensor.zone_not_found.
    */
   async create(data: { serialNumber: string; sensorType: number; zoneId?: number | null }): Promise<Sensor> {
-    const response = await apiClient.post<Sensor>('/sensors', data)
-    return response.data
+    const response = await wrapApiCall(() =>
+      sensorsApi.sensorsCreate({
+        sensorCreateDto: toSdkSensorCreateDto(data),
+      }),
+    )
+    return mapSensor(response)
   },
 
   /**
-   * Delete sensor by ID
+   * Wrapper for `sensorsDelete` (`DELETE /api/v1/sensors`).
+   * Required roles: Admin.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, sensor.not_found.
    */
   async delete(id: number): Promise<void> {
-    await apiClient.delete('/sensors', { params: { id } })
+    await wrapApiCall(() => sensorsApi.sensorsDelete({ id }))
   },
 
   /**
-   * Get readings for a sensor
+   * Wrapper for `readingsGetForSensor` (`GET /api/v1/readings/sensor/{sensorId}`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, reading.invalid_time_range.
    */
   async getReadings(sensorId: number, params: ReadingsQueryParams = {}): Promise<Reading[]> {
-    const response = await apiClient.get<Reading[]>(`/readings/sensor/${sensorId}`, {
-      params: {
-        from: params.from,
-        to: params.to,
-      },
-    })
-    return response.data
+    const response = await wrapApiCall(() =>
+      readingsApi.readingsGetForSensor({
+        sensorId,
+        from: toDateValue(params.from),
+        to: toDateValue(params.to),
+      }),
+    )
+    return response.map(mapReading)
   },
 
   /**
-   * Get last readings for a sensor (returns array)
+   * Wrapper for `readingsGetLastForSensor` (`GET /api/v1/readings/sensor/{sensorId}/last`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, reading.invalid_count.
    */
   async getLastReadings(sensorId: number, count: number = 1): Promise<Reading[]> {
-    const response = await apiClient.get<Reading[]>(`/readings/sensor/${sensorId}/last`, {
-      params: { count },
-    })
-    return response.data
+    const response = await wrapApiCall(() =>
+      readingsApi.readingsGetLastForSensor({
+        sensorId,
+        count,
+      }),
+    )
+    return response.map(mapReading)
   },
 
   /**
-   * Generate new API key for a sensor
+   * Wrapper for `sensorsCreateApiKey` (`POST /api/v1/sensors/{id}/apikey`).
+   * Required roles: Admin.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, sensor_api_key.sensor_not_found.
    */
   async generateApiKey(sensorId: number): Promise<string> {
-    const response = await apiClient.post<{ apiKey: string }>(`/sensors/${sensorId}/apikey`)
-    return response.data.apiKey
+    const response = await wrapApiCall(() =>
+      sensorsApi.sensorsCreateApiKey({
+        id: sensorId,
+      }),
+    )
+    return response.apiKey
   },
 
   /**
-   * Get readings for a zone
+   * Wrapper for `readingsGetForZone` (`GET /api/v1/readings/zone/{zoneId}`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, reading.invalid_time_range.
    */
   async getZoneReadings(zoneId: number, params: ReadingsQueryParams = {}): Promise<Reading[]> {
-    const response = await apiClient.get<Reading[]>(`/readings/zone/${zoneId}`, {
-      params: {
-        from: params.from,
-        to: params.to,
-      },
-    })
-    return response.data
+    const response = await wrapApiCall(() =>
+      readingsApi.readingsGetForZone({
+        zoneId,
+        from: toDateValue(params.from),
+        to: toDateValue(params.to),
+      }),
+    )
+    return response.map(mapReading)
   },
 
   /**
-   * Get last readings for a zone
+   * Wrapper for `readingsGetLastForZone` (`GET /api/v1/readings/zone/{zoneId}/last`).
+   * Required roles: Admin, Operator, Observer.
+   * Throws `AppApiError` with codes: auth.forbidden, auth.unauthorized, reading.invalid_count.
    */
   async getZoneLastReadings(zoneId: number): Promise<Reading[]> {
-    const response = await apiClient.get<Reading[]>(`/readings/zone/${zoneId}/last`)
-    return response.data
+    const response = await wrapApiCall(() =>
+      readingsApi.readingsGetLastForZone({
+        zoneId,
+      }),
+    )
+    return response.map(mapReading)
   },
 }
 
 export default sensorsService
+
+function toDateValue(value?: string): Date | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const candidate = new Date(value)
+  return Number.isNaN(candidate.getTime()) ? undefined : candidate
+}

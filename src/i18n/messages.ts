@@ -1,3 +1,5 @@
+import { apiErrorMetaEn, apiErrorMetaUk, apiErrorsEn, apiErrorsUk } from './apiErrors'
+
 export const messages = {
   en: {
     common: {
@@ -283,6 +285,8 @@ export const messages = {
       localStorage: 'LocalStorage',
       goToDashboard: 'Go to Dashboard',
     },
+    apiErrors: apiErrorsEn,
+    apiErrorMeta: apiErrorMetaEn,
   },
   uk: {
     common: {
@@ -562,5 +566,7 @@ export const messages = {
       localStorage: 'LocalStorage',
       goToDashboard: 'Перейти на дашборд',
     },
+    apiErrors: apiErrorsUk,
+    apiErrorMeta: apiErrorMetaUk,
   },
 } as const

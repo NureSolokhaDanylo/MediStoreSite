@@ -10,10 +10,13 @@
     "test:unit": "vitest",
     "test:e2e": "playwright test",
     "build-only": "vite build",
-    "type-check": "vue-tsc --build"
+    "type-check": "vue-tsc --build",
+    "sdk:generate": "bash scripts/gen_ts_sdk.sh",
+    "sdk:sync-wrapper-docs": "node scripts/sync_sdk_wrapper_docs.mjs",
+    "sdk:check-contract": "node scripts/check_sdk_contract.mjs",
+    "sdk:update": "npm run sdk:generate && npm run sdk:sync-wrapper-docs && npm run sdk:check-contract"
   },
   "dependencies": {
-    "axios": "^1.14.0",
     "pinia": "^3.0.4",
     "vue": "^3.5.30",
     "vue-i18n": "^9.14.5",

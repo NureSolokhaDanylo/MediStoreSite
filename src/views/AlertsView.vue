@@ -23,7 +23,7 @@
         </div>
       </div>
 
-      <section class="report-section">
+      <section v-if="authStore.canGenerateAlertsReport" class="report-section">
         <h2>{{ t('pages.generateReport') }}</h2>
         <p class="report-hint">{{ t('pages.generateReportHint') }}</p>
         <div class="report-controls">
@@ -142,10 +142,12 @@ import { useI18n } from 'vue-i18n'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import alertsService from '@/services/endpoints/alerts'
 import batchesService from '@/services/endpoints/batches'
+import { useAuthStore } from '@/stores/auth'
 import { useLookupsStore } from '@/stores/lookups'
 import type { Alert } from '@/types'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const loading = ref(false)
 const reportLoading = ref(false)
 const error = ref('')

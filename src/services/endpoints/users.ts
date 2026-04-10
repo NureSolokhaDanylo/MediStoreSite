@@ -1,4 +1,11 @@
-import apiClient from '../api/client'
+import { accountApi } from '../api/sdk'
+import { wrapApiCall } from '../api/errors'
+import type {
+  ChangePasswordDto,
+  ChangeRolesDto,
+  CreateAccountDto,
+  PagedResultDtoOfUserDto,
+} from '@/sdk/generated'
 
 export interface UsersListParams {
   skip?: number
@@ -7,77 +14,69 @@ export interface UsersListParams {
   role?: string
 }
 
-export interface CreateAccountDto {
-  userName: string
-  password: string
-  roles?: string[]
-}
-
-export interface ChangePasswordDto {
-  targetUserId?: string
-  currentPassword?: string
-  newPassword: string
-}
-
-export interface ChangeRolesDto {
-  targetUserId: string
-  roles: string[]
-}
-
 export const usersService = {
-  async getAll(params: UsersListParams = {}): Promise<unknown> {
-    const response = await apiClient.get<unknown>('/account/users', {
-      params: {
+  /**
+   * Wrapper for `accountGetUsers` (`GET /api/v1/account/users`).
+   * Required roles: Admin.
+   * Throws `AppApiError` with codes: account.invalid_paging, auth.forbidden, auth.unauthorized.
+   */
+  async getAll(params: UsersListParams = {}): Promise<PagedResultDtoOfUserDto> {
+    return wrapApiCall(() =>
+      accountApi.accountGetUsers({
         skip: params.skip ?? 0,
         take: params.take ?? 50,
         q: params.q,
         role: params.role,
-      },
-    })
-    return response.data
+      }),
+    )
   },
 
-  async getById(id: string): Promise<unknown> {
-    const response = await apiClient.get<unknown>('/account/users', {
-      params: { skip: 0, take: 2000 },
-    })
-    const data = response.data as any
-    const items = Array.isArray(data)
-      ? data
-      : Array.isArray(data?.items)
-        ? data.items
-        : Array.isArray(data?.data?.items)
-          ? data.data.items
-          : []
-
-    const match = items.find((item: any) => {
-      const candidate = item?.id ?? item?.userId ?? item?.sub
-      return String(candidate) === String(id)
-    })
-
-    if (!match) {
-      throw new Error('User not found')
-    }
-    return match
+  /**
+   * Wrapper for `accountCreateAccount` (`POST /api/v1/account`).
+   * Required roles: Admin.
+   * Throws `AppApiError` with codes: account.create_failed, account.requester_not_found, account.roles_do_not_exist, auth.forbidden, auth.unauthorized.
+   */
+  async create(payload: CreateAccountDto): Promise<void> {
+    await wrapApiCall(() =>
+      accountApi.accountCreateAccount({
+        createAccountDto: payload,
+      }),
+    )
   },
 
-  async create(payload: CreateAccountDto): Promise<unknown> {
-    const response = await apiClient.post<unknown>('/account', payload)
-    return response.data
+  /**
+   * Wrapper for `accountChangePassword` (`POST /api/v1/account/change-password`).
+   * Required roles: not specified in OpenAPI.
+   * Throws `AppApiError` with codes: account.change_password_failed, account.requester_not_found, account.target_user_not_found, auth.current_password_incorrect, auth.current_password_required, auth.forbidden, auth.unauthorized.
+   */
+  async changePassword(payload: ChangePasswordDto): Promise<void> {
+    await wrapApiCall(() =>
+      accountApi.accountChangePassword({
+        changePasswordDto: payload,
+      }),
+    )
   },
 
-  async changePassword(payload: ChangePasswordDto): Promise<unknown> {
-    const response = await apiClient.post<unknown>('/account/change-password', payload)
-    return response.data
+  /**
+   * Wrapper for `accountChangeRoles` (`POST /api/v1/account/roles`).
+   * Required roles: Admin.
+   * Throws `AppApiError` with codes: account.cannot_change_admin_roles, account.requester_not_found, account.roles_do_not_exist, account.target_user_not_found, auth.forbidden, auth.unauthorized.
+   */
+  async changeRoles(payload: ChangeRolesDto): Promise<void> {
+    await wrapApiCall(() =>
+      accountApi.accountChangeRoles({
+        changeRolesDto: payload,
+      }),
+    )
   },
 
-  async changeRoles(payload: ChangeRolesDto): Promise<unknown> {
-    const response = await apiClient.post<unknown>('/account/roles', payload)
-    return response.data
-  },
-
+  /**
+   * Wrapper for `accountDelete` (`DELETE /api/v1/account/{id}`).
+   * Required roles: Admin.
+   * Throws `AppApiError` with codes: account.cannot_delete_self, account.delete_failed, account.requester_not_found, account.target_user_not_found, auth.forbidden, auth.unauthorized.
+   */
   async deleteById(id: string): Promise<void> {
-    await apiClient.delete(`/account/${id}`)
+    await wrapApiCall(() => accountApi.accountDelete({ id }))
   },
 }
 
